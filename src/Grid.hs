@@ -12,9 +12,6 @@ module Grid (
 ) where
 
 
-import Data.Array
-
-
 type Width = Int
 type Height = Int
 
@@ -23,7 +20,7 @@ type XLoc = Int
 type YLoc = Int
 
 
-newtype Grid a = Grid { unGrid :: [Array Int a] }
+newtype Grid a = Grid { unGrid :: [[a]] }
     deriving (Eq, Ord)
 
 
@@ -32,41 +29,52 @@ instance Show a => Show (Grid a) where
 
 
 toList :: Grid a -> [[a]]
-toList = map elems . unGrid
+toList = unGrid
 
 
 mkGrid :: Width -> Height -> a -> Grid a
-mkGrid w h x = let
-    row = listArray (0, w - 1) (repeat x)
-    in Grid $ replicate h row
+mkGrid w h x = Grid $ replicate h row
+    where
+        row = take w $ repeat x
 
 
 fromList :: [[a]] -> Grid a
-fromList xss = let
-    w = maximum $ map length xss
-    in Grid $ map (listArray (0, w - 1)) xss
+fromList = Grid . ensureRect
+    where
+        allSame xs = all (== head xs) xs
+        isRect = allSame . map length
+        ensureRect xss = case isRect xss of
+            True -> xss
+            False -> error "Grid must be constructed from NxM list of values."
 
 
-putRow :: Array Int a -> Int -> Grid a -> Grid a
+putRow :: [a] -> Int -> Grid a -> Grid a
 putRow row n (Grid rs) = let
     leadingRs = take n rs
     trailingRs = drop (n + 1) rs
     in Grid $ leadingRs ++ [row] ++ trailingRs
 
 
-getRow :: Int -> Grid a -> Array Int a
+getRow :: Int -> Grid a -> [a]
 getRow n = head . drop n . unGrid
+
+
+replaceNth :: Int -> a -> [a] -> [a]
+replaceNth _ _ [] = error "Cannot replace a value in an empty list."
+replaceNth n x' (x:xs) = case n of
+    0 -> x' : xs
+    _ -> x : replaceNth (n - 1) x' xs
 
 
 put :: a -> XLoc -> YLoc -> Grid a -> Grid a
 put val x y g = let
     row = getRow y g
-    row' = row // [(x, val)]
+    row' = replaceNth x val row
     in putRow row' y g
 
 
 get :: XLoc -> YLoc -> Grid a -> a
-get x y g = getRow y g ! x
+get x y g = getRow y g !! x
 
 
 
