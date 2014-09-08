@@ -29,22 +29,10 @@ grid = head . unT
 
 
 rotations :: [Grid Presence]
-rotations = map mkPiece [
+rotations = mkRotations $
     [ ".O.",
       "OOO",
-      "..." ],
-
-    [ ".O.",
-      ".OO",
-      ".O." ],
-
-    [ "...",
-      "OOO",
-      ".O." ],
-
-    [ ".O.",
-      "OO.",
-      ".O." ]]
+      "..." ]
 
 
 

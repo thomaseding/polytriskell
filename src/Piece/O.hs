@@ -12,7 +12,7 @@ import Presence
 import Rotate
 
 
-newtype O = O { unO :: Grid Presence }
+newtype O = O { unO :: [Grid Presence] }
 
 
 instance Rotate O where
@@ -21,16 +21,17 @@ instance Rotate O where
 
 
 instance New O where
-    new = O rotation
+    new = O $ cycle rotations
 
 
 grid :: O -> Grid Presence
-grid = unO
+grid = head . unO
 
 
-rotation :: Grid Presence
-rotation = mkPiece [ "OO",
-                     "OO" ]
+rotations :: [Grid Presence]
+rotations = mkRotations $
+    [ "OO",
+      "OO" ]
 
 
 

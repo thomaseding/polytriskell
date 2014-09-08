@@ -1,8 +1,9 @@
 module Piece.Factory (
-    mkPiece,
+    mkRotations,
 ) where
 
 
+import Data.List
 import Grid
 import Presence
 
@@ -14,10 +15,12 @@ fromChar c = case c of
     _ -> error "Illegal presence specification."
 
 
-mkPiece :: [String] -> Grid Presence
-mkPiece = fromList . map (map fromChar)
+mkRotations :: [String] -> [Grid Presence]
+mkRotations = cycle . map fromList . take 4 . iterate rotateCW . map (map fromChar)
 
 
+rotateCW :: [[a]] -> [[a]]
+rotateCW = map reverse . transpose
 
 
 

@@ -29,22 +29,10 @@ grid = head . unJ
 
 
 rotations :: [Grid Presence]
-rotations = map mkPiece [
+rotations = mkRotations $
     [ "O..",
       "OOO",
-      "..." ],
-
-    [ ".OO",
-      ".O.",
-      ".O." ],
-
-    [ "...",
-      "OOO",
-      "..O" ],
-
-    [ ".O.",
-      ".O.",
-      "OO." ]]
+      "..." ]
 
 
 
