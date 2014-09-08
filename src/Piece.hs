@@ -24,11 +24,16 @@ type Rotations = Stream (Grid Presence)
 data Piece a = Piece a PieceKind Rotations
 
 
+instance Functor Piece where
+    fmap f = \case
+        Piece x k gs -> Piece (f x) k gs
+
+
 instance Rotate (Piece a) where
     rotate dir p = case p of
-        Piece x kind grids -> Piece x kind $ case dir of
-            Clockwise -> Stream.tail grids
-            CounterClockwise -> Stream.drop 3 grids
+        Piece x k gs -> Piece x k $ case dir of
+            Clockwise -> Stream.tail gs
+            CounterClockwise -> Stream.drop 3 gs
 
 
 mkPiece :: PieceKind -> a -> Piece a
