@@ -3,28 +3,18 @@ module Piece (
 ) where
 
 
-import Grid
-import New
-import Piece.Factory
-import qualified Piece.I
-import qualified Piece.J
-import qualified Piece.L
-import qualified Piece.O
-import qualified Piece.S
-import qualified Piece.T
-import qualified Piece.Z
-import Presence
-import Rotate
+import Data.List (transpose)
+import Grid (Grid, fromList, toList)
+import New (New(..))
+import Presence (Presence(..))
+import Rotate (Rotate(..), RotateDir(..))
 
 
-data Piece
-    = I Piece.I.I
-    | J Piece.J.J
-    | L Piece.L.L
-    | O Piece.O.O
-    | S Piece.S.S
-    | T Piece.T.T
-    | Z Piece.Z.Z
+data ShapeKind = I | J | L | O | S | T | Z
+    deriving (Show, Eq, Ord)
+
+
+data Piece = Piece ShapeKind [Grid Presence]
 
 
 instance Show Piece where
@@ -38,48 +28,93 @@ instance Show Piece where
 
 instance Rotate Piece where
     rotate dir p = case p of
-        I x -> I $ rotate dir x
-        J x -> J $ rotate dir x
-        L x -> L $ rotate dir x
-        O x -> O $ rotate dir x
-        S x -> S $ rotate dir x
-        T x -> T $ rotate dir x
-        Z x -> Z $ rotate dir x
+        Piece kind grids -> Piece kind $ case dir of
+            Clockwise -> drop 1 grids
+            CounterClockwise -> drop 3 grids
 
 
 instance New [Piece] where
-    new = [
-        I (new :: Piece.I.I),
-        J (new :: Piece.J.J),
-        L (new :: Piece.L.L),
-        O (new :: Piece.O.O),
-        S (new :: Piece.S.S),
-        T (new :: Piece.T.T),
-        Z (new :: Piece.Z.Z) ]
+    new = map (\(strRep, kind) -> Piece kind $ mkRotations strRep) prototypes
+
+
+mkRotations :: [String] -> [Grid Presence]
+mkRotations = cycle . map fromList . take 4 . iterate rotateCW . map (map fromChar)
+
+
+rotateCW :: [[a]] -> [[a]]
+rotateCW = map reverse . transpose
 
 
 grid :: Piece -> Grid Presence
 grid p = case p of
-    I x -> Piece.I.grid x
-    J x -> Piece.J.grid x
-    L x -> Piece.L.grid x
-    O x -> Piece.O.grid x
-    S x -> Piece.S.grid x
-    T x -> Piece.T.grid x
-    Z x -> Piece.Z.grid x
+    Piece _ (g:gs) -> g
 
 
+prototypes :: [([String], ShapeKind)]
+prototypes = [
+    (prototypeI, I),
+    (prototypeJ, J),
+    (prototypeL, L),
+    (prototypeO, O),
+    (prototypeS, S),
+    (prototypeT, T),
+    (prototypeZ, Z) ]
 
 
+fromChar :: Char -> Presence
+fromChar c = case c of
+    'O' -> Present
+    '.' -> NotPresent
+    _ -> error "Illegal presence specification."
 
 
+prototypeI :: [String]
+prototypeI = [
+    "....",
+    "OOOO",
+    "....",
+    "...." ]
 
 
+prototypeJ :: [String]
+prototypeJ = [
+    "O..",
+    "OOO",
+    "..." ]
 
 
+prototypeL :: [String]
+prototypeL = [
+    "..O",
+    "OOO",
+    "..." ]
 
 
+prototypeO :: [String]
+prototypeO = [
+    "OO",
+    "OO" ]
 
+
+prototypeS :: [String]
+prototypeS = [
+    ".OO",
+    "OO.",
+    "..." ]
+
+
+prototypeT :: [String]
+prototypeT = [
+    ".O.",
+    "OOO",
+    "..." ]
+
+
+prototypeZ :: [String]
+prototypeZ = [
+    "OO.",
+    ".OO",
+    "..." ]
 
 
 
