@@ -1,7 +1,7 @@
-module Game.Piece (
-    PieceKind(..),
-    Piece,
-    mkPiece,
+module Game.Tromino (
+    TrominoKind(..),
+    Tromino,
+    mkTromino,
     kind,
     grid,
 ) where
@@ -15,46 +15,46 @@ import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
 
-data PieceKind = I | J | L | O | S | T | Z
+data TrominoKind = I | J | L | O | S | T | Z
     deriving (Show, Eq, Ord)
 
 
 type Rotations = Stream (Grid Presence)
 
 
-data Piece a = Piece a PieceKind Rotations
+data Tromino a = Tromino a TrominoKind Rotations
 
 
-instance Functor Piece where
+instance Functor Tromino where
     fmap f = \case
-        Piece x k gs -> Piece (f x) k gs
+        Tromino x k gs -> Tromino (f x) k gs
 
 
-instance Rotate (Piece a) where
-    rotate dir p = case p of
-        Piece x k gs -> Piece x k $ case dir of
+instance Rotate (Tromino a) where
+    rotate dir = \case
+        Tromino x k gs -> Tromino x k $ case dir of
             Clockwise -> Stream.tail gs
             CounterClockwise -> Stream.drop 3 gs
 
 
-mkPiece :: PieceKind -> a -> Piece a
-mkPiece k x = Piece x k $ genRotations $ gridSpec k
+mkTromino :: TrominoKind -> a -> Tromino a
+mkTromino k x = Tromino x k $ genRotations $ gridSpec k
     where
         rotateCW = map reverse . transpose
         genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
 
 
-kind :: Piece a -> PieceKind
+kind :: Tromino a -> TrominoKind
 kind = \case
-    Piece _ k _ -> k
+    Tromino _ k _ -> k
 
 
-grid :: Piece a -> Grid Presence
+grid :: Tromino a -> Grid Presence
 grid = \case
-    Piece _ _ gs -> Stream.head gs
+    Tromino _ _ gs -> Stream.head gs
 
 
-gridSpec :: PieceKind -> [[Presence]]
+gridSpec :: TrominoKind -> [[Presence]]
 gridSpec = \case
     I -> gridSpecI
     J -> gridSpecJ
@@ -71,7 +71,7 @@ toGridSpec = enforceSquare . map (map fromChar)
         isSquare xss = all (== length xss) $ map length xss
         enforceSquare xss = case isSquare xss of
             True -> xss
-            False -> error "Piece specification must be square."
+            False -> error "Tromino specification must be square."
         fromChar c = case c of
             'O' -> Present
             '.' -> NotPresent
