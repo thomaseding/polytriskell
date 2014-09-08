@@ -2,6 +2,7 @@ module Piece (
     PieceKind(..),
     Piece,
     mkPiece,
+    kind,
     grid,
 ) where
 
@@ -41,6 +42,11 @@ mkPiece k x = Piece x k $ genRotations $ gridSpec k
     where
         rotateCW = map reverse . transpose
         genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
+
+
+kind :: Piece a -> PieceKind
+kind = \case
+    Piece _ k _ -> k
 
 
 grid :: Piece a -> Grid Presence
