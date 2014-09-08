@@ -1,117 +1,116 @@
 module Piece (
+    PieceKind(..),
     Piece,
+    mkPiece,
+    grid,
 ) where
 
 
 import Data.List (transpose)
-import Grid (Grid, fromList, toList)
-import New (New(..))
+import Data.Stream (Stream)
+import qualified Data.Stream as Stream
+import Grid (Grid, fromList)
 import Presence (Presence(..))
 import Rotate (Rotate(..), RotateDir(..))
 
 
-data ShapeKind = I | J | L | O | S | T | Z
+data PieceKind = I | J | L | O | S | T | Z
     deriving (Show, Eq, Ord)
 
 
-data Piece = Piece ShapeKind [Grid Presence]
+type Rotations = Stream (Grid Presence)
 
 
-instance Show Piece where
-    show = let
-        showGrid = unlines . map (map toChar) . toList
-        toChar p = case p of
-            Present -> 'O'
-            NotPresent -> '.'
-        in showGrid . grid
+data Piece a = Piece a PieceKind Rotations
 
 
-instance Rotate Piece where
+instance Rotate (Piece a) where
     rotate dir p = case p of
-        Piece kind grids -> Piece kind $ case dir of
-            Clockwise -> drop 1 grids
-            CounterClockwise -> drop 3 grids
+        Piece x kind grids -> Piece x kind $ case dir of
+            Clockwise -> Stream.tail grids
+            CounterClockwise -> Stream.drop 3 grids
 
 
-instance New [Piece] where
-    new = map (\(strRep, kind) -> Piece kind $ mkRotations strRep) prototypes
+mkPiece :: PieceKind -> a -> Piece a
+mkPiece k x = Piece x k $ genRotations $ gridSpec k
+    where
+        rotateCW = map reverse . transpose
+        genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
 
 
-mkRotations :: [String] -> [Grid Presence]
-mkRotations = cycle . map fromList . take 4 . iterate rotateCW . map (map fromChar)
+grid :: Piece a -> Grid Presence
+grid = \case
+    Piece _ _ gs -> Stream.head gs
 
 
-rotateCW :: [[a]] -> [[a]]
-rotateCW = map reverse . transpose
+gridSpec :: PieceKind -> [[Presence]]
+gridSpec = \case
+    I -> gridSpecI
+    J -> gridSpecJ
+    L -> gridSpecL
+    O -> gridSpecO
+    S -> gridSpecS
+    T -> gridSpecT
+    Z -> gridSpecZ
 
 
-grid :: Piece -> Grid Presence
-grid p = case p of
-    Piece _ (g:gs) -> g
+toGridSpec :: [[Char]] -> [[Presence]]
+toGridSpec = enforceSquare . map (map fromChar)
+    where
+        isSquare xss = all (== length xss) $ map length xss
+        enforceSquare xss = case isSquare xss of
+            True -> xss
+            False -> error "Piece specification must be square."
+        fromChar c = case c of
+            'O' -> Present
+            '.' -> NotPresent
+            _ -> error "Illegal presence specification."
 
 
-prototypes :: [([String], ShapeKind)]
-prototypes = [
-    (prototypeI, I),
-    (prototypeJ, J),
-    (prototypeL, L),
-    (prototypeO, O),
-    (prototypeS, S),
-    (prototypeT, T),
-    (prototypeZ, Z) ]
-
-
-fromChar :: Char -> Presence
-fromChar c = case c of
-    'O' -> Present
-    '.' -> NotPresent
-    _ -> error "Illegal presence specification."
-
-
-prototypeI :: [String]
-prototypeI = [
+gridSpecI :: [[Presence]]
+gridSpecI = toGridSpec [
     "....",
     "OOOO",
     "....",
     "...." ]
 
 
-prototypeJ :: [String]
-prototypeJ = [
+gridSpecJ :: [[Presence]]
+gridSpecJ = toGridSpec [
     "O..",
     "OOO",
     "..." ]
 
 
-prototypeL :: [String]
-prototypeL = [
+gridSpecL :: [[Presence]]
+gridSpecL = toGridSpec [
     "..O",
     "OOO",
     "..." ]
 
 
-prototypeO :: [String]
-prototypeO = [
+gridSpecO :: [[Presence]]
+gridSpecO = toGridSpec [
     "OO",
     "OO" ]
 
 
-prototypeS :: [String]
-prototypeS = [
+gridSpecS :: [[Presence]]
+gridSpecS = toGridSpec [
     ".OO",
     "OO.",
     "..." ]
 
 
-prototypeT :: [String]
-prototypeT = [
+gridSpecT :: [[Presence]]
+gridSpecT = toGridSpec [
     ".O.",
     "OOO",
     "..." ]
 
 
-prototypeZ :: [String]
-prototypeZ = [
+gridSpecZ :: [[Presence]]
+gridSpecZ = toGridSpec [
     "OO.",
     ".OO",
     "..." ]

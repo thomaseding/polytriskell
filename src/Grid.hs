@@ -13,7 +13,6 @@ module Grid (
 
 
 import Data.Array
-import Data.List
 
 
 type Width = Int
