@@ -1,4 +1,4 @@
-module Presence (
+module Data.Presence (
     Presence(..),
 ) where
 

@@ -1,4 +1,4 @@
-module Rotate (
+module Data.Rotate (
     RotateDir(..),
     Rotate(..),
 ) where

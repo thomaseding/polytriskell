@@ -1,4 +1,4 @@
-module Piece (
+module Game.Piece (
     PieceKind(..),
     Piece,
     mkPiece,
@@ -7,12 +7,12 @@ module Piece (
 ) where
 
 
+import Data.Grid (Grid, fromList)
 import Data.List (transpose)
+import Data.Presence (Presence(..))
+import Data.Rotate (Rotate(..), RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
-import Grid (Grid, fromList)
-import Presence (Presence(..))
-import Rotate (Rotate(..), RotateDir(..))
 
 
 data PieceKind = I | J | L | O | S | T | Z

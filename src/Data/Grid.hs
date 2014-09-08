@@ -1,4 +1,4 @@
-module Grid (
+module Data.Grid (
     Width,
     Height,
     XLoc,
