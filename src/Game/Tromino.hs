@@ -4,6 +4,7 @@ module Game.Tromino (
     mkTromino,
     kind,
     grid,
+    metadata,
 ) where
 
 
@@ -42,6 +43,11 @@ mkTromino k x = Tromino x k $ genRotations $ gridSpec k
     where
         rotateCW = map reverse . transpose
         genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
+
+
+metadata :: Tromino a -> a
+metadata = \case
+    Tromino x _ _ -> x
 
 
 kind :: Tromino a -> TrominoKind

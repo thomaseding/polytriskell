@@ -7,6 +7,7 @@ module Data.Grid (
     mkGrid,
     fromList,
     toList,
+    dimensions,
     put,
     get,
 ) where
@@ -28,6 +29,10 @@ instance Show a => Show (Grid a) where
     show = show . toList
 
 
+instance Functor Grid where
+    fmap f (Grid xss) = Grid $ map (map f) xss
+
+
 toList :: Grid a -> [[a]]
 toList = unGrid
 
@@ -46,6 +51,10 @@ fromList = Grid . ensureRect
         ensureRect xss = case isRect xss of
             True -> xss
             False -> error "Grid must be constructed from NxM list of values."
+
+
+dimensions :: Grid a -> (Width, Height)
+dimensions (Grid xss) = (length $ head xss, length xss)
 
 
 putRow :: [a] -> Int -> Grid a -> Grid a
