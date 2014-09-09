@@ -37,15 +37,15 @@ extractGrid :: Pos -> Width -> Height -> Playfield a -> Grid (Cell a)
 extractGrid = undefined
 
 
-coverGrid :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
-coverGrid = undefined
+placeGrid :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
+placeGrid = undefined
 
 
 addTromino :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
-addTromino = withTromino (not .: occupied) add
+addTromino = withTromino (not .: colliding) add
     where
-        occupied Present (Occupied _) = True
-        occupied _ _ = False
+        colliding Present (Occupied _) = True
+        colliding _ _ = False
         --
         add Empty = Nothing
         add occupied = Just occupied
@@ -69,7 +69,7 @@ removeTromino' = withTromino always remove
 withTromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Pos -> Tromino a -> Playfield b -> Maybe (Playfield b)
 withTromino pred mask pos tromino field = case canOverlay pred trominoGrid existingGrid of
     False -> Nothing
-    True -> Just $ coverGrid pos (overlay mask trominoGrid' existingGrid) field
+    True -> Just $ placeGrid pos (overlay mask trominoGrid' existingGrid) field
     where
         (w, h) = dimensions trominoGrid
         existingGrid = extractGrid pos w h field
