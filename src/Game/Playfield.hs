@@ -86,7 +86,6 @@ overlay mask = Grid.zipWith $ \x y -> case mask x of
 canOverlay :: (a -> b -> Bool) -> Grid a -> Grid b -> Bool
 canOverlay pred g1 g2 = and $ zipWith pred (toCells g1) (toCells g2)
     where
-        toCells :: Grid c -> [c]
         toCells = concat . toList
 
 
