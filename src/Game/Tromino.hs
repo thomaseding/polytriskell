@@ -38,11 +38,8 @@ instance Rotate (Tromino a) where
             CounterClockwise -> Stream.drop 3 gs
 
 
-mkTromino :: TrominoKind -> a -> Tromino a
-mkTromino k x = Tromino x k $ genRotations $ gridSpec k
-    where
-        rotateCW = map reverse . transpose
-        genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
+mkTromino :: a -> TrominoKind -> Tromino a
+mkTromino x = fmap (const x) . tromino
 
 
 metadata :: Tromino a -> a
@@ -60,15 +57,15 @@ grid = \case
     Tromino _ _ gs -> Stream.head gs
 
 
-gridSpec :: TrominoKind -> [[Presence]]
-gridSpec = \case
-    I -> gridSpecI
-    J -> gridSpecJ
-    L -> gridSpecL
-    O -> gridSpecO
-    S -> gridSpecS
-    T -> gridSpecT
-    Z -> gridSpecZ
+tromino :: TrominoKind -> Tromino ()
+tromino = \case
+    I -> trominoI
+    J -> trominoJ
+    L -> trominoL
+    O -> trominoO
+    S -> trominoS
+    T -> trominoT
+    Z -> trominoZ
 
 
 toGridSpec :: [[Char]] -> [[Presence]]
@@ -84,50 +81,57 @@ toGridSpec = enforceSquare . map (map fromChar)
             _ -> error "Illegal presence specification."
 
 
-gridSpecI :: [[Presence]]
-gridSpecI = toGridSpec [
+mkTromino' :: TrominoKind -> [[Char]] -> Tromino ()
+mkTromino' k = Tromino () k . genRotations . toGridSpec
+    where
+        rotateCW = map reverse . transpose
+        genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
+
+
+trominoI :: Tromino ()
+trominoI = mkTromino' I [
     "....",
     "OOOO",
     "....",
     "...." ]
 
 
-gridSpecJ :: [[Presence]]
-gridSpecJ = toGridSpec [
+trominoJ :: Tromino ()
+trominoJ = mkTromino' J [
     "O..",
     "OOO",
     "..." ]
 
 
-gridSpecL :: [[Presence]]
-gridSpecL = toGridSpec [
+trominoL :: Tromino ()
+trominoL = mkTromino' L [
     "..O",
     "OOO",
     "..." ]
 
 
-gridSpecO :: [[Presence]]
-gridSpecO = toGridSpec [
+trominoO :: Tromino ()
+trominoO = mkTromino' O [
     "OO",
     "OO" ]
 
 
-gridSpecS :: [[Presence]]
-gridSpecS = toGridSpec [
+trominoS :: Tromino ()
+trominoS = mkTromino' S [
     ".OO",
     "OO.",
     "..." ]
 
 
-gridSpecT :: [[Presence]]
-gridSpecT = toGridSpec [
+trominoT :: Tromino ()
+trominoT = mkTromino' T [
     ".O.",
     "OOO",
     "..." ]
 
 
-gridSpecZ :: [[Presence]]
-gridSpecZ = toGridSpec [
+trominoZ :: Tromino ()
+trominoZ = mkTromino' Z [
     "OO.",
     ".OO",
     "..." ]
