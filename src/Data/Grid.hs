@@ -7,6 +7,7 @@ module Data.Grid (
     mkGrid,
     fromList,
     toList,
+    Data.Grid.zipWith,
     dimensions,
     put,
     get,
@@ -51,6 +52,16 @@ fromList = Grid . ensureRect
         ensureRect xss = case isRect xss of
             True -> xss
             False -> error "Grid must be constructed from NxM list of values."
+
+
+zipWith :: (a -> b -> c) -> Grid a -> Grid b -> Grid c
+zipWith f g1 g2 = case dimensions g1 == dimensions g2 of
+    False -> error "Data.Grid.zipWith defined only for same sized grids."
+    True -> let
+        xss1 = unGrid g1
+        xss2 = unGrid g2
+        yss = Prelude.zipWith (Prelude.zipWith f) xss1 xss2
+        in Grid yss
 
 
 dimensions :: Grid a -> (Width, Height)

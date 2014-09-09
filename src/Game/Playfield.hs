@@ -3,6 +3,7 @@ module Game.Playfield (
 
 
 import Data.Grid (Width, Height, XLoc, YLoc, Grid, mkGrid, toList, dimensions)
+import qualified Data.Grid as Grid
 import Data.Function (on)
 import Data.Function.Pointless ((.:))
 import Data.Presence (Presence(..))
@@ -38,38 +39,63 @@ toCell x = \case
     Present -> Occupied x
 
 
-add :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
-add pos tromino field = case collides trominoGrid existingGrid of
-    True -> Nothing
-    False -> Just $ overlay pos trominoGrid field
-    where
-        (w, h) = dimensions trominoGrid
-        trominoGrid = fmap (toCell $ metadata tromino) $ grid tromino
-        existingGrid = extractGrid pos w h field
-
-
 extractGrid :: Pos -> Width -> Height -> Playfield a -> Grid (Cell a)
 extractGrid = undefined
 
 
-overlay :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
-overlay pos grid field = undefined
+coverGrid :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
+coverGrid = undefined
+
+
+addTromino :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
+addTromino = withTromino (not .: occupied) add
     where
-        (w, h) = dimensions grid
+        occupied Present (Occupied _) = True
+        occupied _ _ = False
+        --
+        add Empty = Nothing
+        add occupied = Just occupied
+
+
+removeTromino :: Pos -> Tromino a -> Playfield a -> Playfield a
+removeTromino p t f = case removeTromino' p t f of
+    Nothing -> error "Game.removeTromino: Internal logic error."
+    Just f' -> f'
+
+
+removeTromino' :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
+removeTromino' = withTromino always remove
+    where
+        always _ _ = True
+        --
+        remove Empty = Nothing
+        remove occupied = Just Empty
+
+
+withTromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Pos -> Tromino a -> Playfield b -> Maybe (Playfield b)
+withTromino pred mask pos tromino field = case canOverlay pred trominoGrid existingGrid of
+    False -> Nothing
+    True -> Just $ coverGrid pos (overlay mask trominoGrid' existingGrid) field
+    where
+        (w, h) = dimensions trominoGrid
         existingGrid = extractGrid pos w h field
+        trominoGrid = grid tromino
+        trominoGrid' = fmap (toCell $ metadata tromino) trominoGrid
 
 
-canOverlay :: (a -> a -> Bool) -> Grid a -> Grid a -> Bool
-canOverlay pred = and .: (zipWith pred `on` toCells)
+overlay :: (a -> Maybe b) -> Grid a -> Grid b -> Grid b
+overlay mask = Grid.zipWith $ \x y -> case mask x of
+    Nothing -> y
+    Just y' -> y'
+
+
+canOverlay :: (a -> b -> Bool) -> Grid a -> Grid b -> Bool
+canOverlay pred g1 g2 = and $ zipWith pred (toCells g1) (toCells g2)
     where
+        toCells :: Grid c -> [c]
         toCells = concat . toList
 
 
-collides :: Grid (Cell a) -> Grid (Cell a) -> Bool
-collides = not .: canOverlay (not .: occupied)
-    where
-        occupied (Occupied _) (Occupied _) = True
-        occupied _ _ = False
 
 
 
