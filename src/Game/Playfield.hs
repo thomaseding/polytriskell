@@ -27,12 +27,6 @@ mkPlayfield :: Width -> Height -> Playfield a
 mkPlayfield w h = Playfield $ mkGrid w h Empty
 
 
-toPresence :: Cell a -> Presence
-toPresence = \case
-    Empty -> NotPresent
-    Occupied _ -> Present
-
-
 toCell :: a -> Presence -> Cell a
 toCell x = \case
     NotPresent -> Empty
