@@ -8,7 +8,6 @@ module Data.Grid (
     put,
     get,
     subGrid,
-    zipWith,
     overlayBy1,
     overlayBy2,
     canOverlay,
@@ -19,7 +18,7 @@ import Data.Maybe (fromJust)
 import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
 import qualified Math.Geometry.GridMap as GM
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Prelude hiding (lookup, zipWith)
+import Prelude hiding (lookup)
 
 
 type Index = (Int, Int)
@@ -95,23 +94,6 @@ lookup idx (Grid dim gm) = case idx `inDim` dim of
     False -> Nothing
     True -> GM.lookup idx gm
 
-
-zipWith :: (a -> b -> c) -> Grid a -> Grid b -> Grid c
-zipWith f = zipWithTotal $ \(Just x) (Just y) -> f x y
-
-
-zipWithTotal :: (Maybe a -> Maybe b -> c) -> Grid a -> Grid b -> Grid c
-zipWithTotal f gridA gridB = fromList dimC $ map g indicesC
-    where
-        dimA = dimensions gridA
-        dimB = dimensions gridB
-        dimC = unionDim dimA dimB
-        indicesC = dimIndices dimC
-        g idx = let
-            a = lookup idx gridA
-            b = lookup idx gridB
-            in f a b
-        
 
 addIndices :: Index -> Index -> Index
 addIndices (x, y) (x', y') = (x + x', y + y')
