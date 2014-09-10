@@ -27,8 +27,7 @@ data Tetromino a = Tetromino a TetrominoKind Rotations
 
 
 instance Functor Tetromino where
-    fmap f = \case
-        Tetromino x k gs -> Tetromino (f x) k gs
+    fmap f (Tetromino x k gs) = Tetromino (f x) k gs
 
 
 instance Rotate (Tetromino a) where
@@ -43,18 +42,15 @@ mkTetromino x = fmap (const x) . tetromino
 
 
 getMetadata :: Tetromino a -> a
-getMetadata = \case
-    Tetromino x _ _ -> x
+getMetadata (Tetromino x _ _) = x
 
 
 getKind :: Tetromino a -> TetrominoKind
-getKind = \case
-    Tetromino _ k _ -> k
+getKind (Tetromino _ k _) = k
 
 
 getGrid :: Tetromino a -> Grid Presence
-getGrid = \case
-    Tetromino _ _ gs -> Stream.head gs
+getGrid (Tetromino _ _ gs) = Stream.head gs
 
 
 tetromino :: TetrominoKind -> Tetromino ()
