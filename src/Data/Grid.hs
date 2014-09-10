@@ -7,6 +7,7 @@ module Data.Grid (
     dimensions,
     put,
     get,
+    subGrid,
     zipWith,
     overlayBy1,
     overlayBy2,

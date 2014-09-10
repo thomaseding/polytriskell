@@ -30,14 +30,6 @@ toCell x = \case
     Present -> Occupied x
 
 
-extractGrid :: Index -> Dimensions -> Playfield a -> Grid (Cell a)
-extractGrid = undefined
-
-
-placeGrid :: Index -> Grid (Cell a) -> Playfield a -> Playfield a
-placeGrid = undefined
-
-
 addTetromino :: Index -> Tetromino a -> Playfield a -> Maybe (Playfield a)
 addTetromino = withTetromino (not .: colliding) add
     where
@@ -66,14 +58,15 @@ removeTetromino' = withTetromino always remove
 withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Tetromino a -> Playfield b -> Maybe (Playfield b)
 withTetromino pred mask offset tetromino field = case allowChange of
     False -> Nothing
-    True -> Just $ Playfield newGrid
+    True -> Just $ Playfield fieldGrid'
     where
         dim = Grid.dimensions tetrominoGrid
-        existingGrid = extractGrid offset dim field
+        fieldGrid = unPlayfield field
+        existingGrid = Grid.subGrid offset dim fieldGrid
         tetrominoGrid = grid tetromino
         tetrominoGrid' = fmap (toCell $ metadata tetromino) tetrominoGrid
         allowChange = Grid.canOverlay pred offset tetrominoGrid existingGrid
-        newGrid = Grid.overlayBy1 mask offset tetrominoGrid' existingGrid
+        fieldGrid' = Grid.overlayBy1 mask offset tetrominoGrid' existingGrid
 
 
 
