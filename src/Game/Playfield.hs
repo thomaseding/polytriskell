@@ -7,7 +7,7 @@ import qualified Data.Grid as Grid
 import Data.Function (on)
 import Data.Function.Pointless ((.:))
 import Data.Presence (Presence(..))
-import Game.Tromino (Tromino, grid, metadata)
+import Game.Tetromino (Tetromino, grid, metadata)
 
 
 data Cell a
@@ -41,8 +41,8 @@ placeGrid :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
 placeGrid = undefined
 
 
-addTromino :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
-addTromino = withTromino (not .: colliding) add
+addTetromino :: Pos -> Tetromino a -> Playfield a -> Maybe (Playfield a)
+addTetromino = withTetromino (not .: colliding) add
     where
         colliding Present (Occupied _) = True
         colliding _ _ = False
@@ -51,14 +51,14 @@ addTromino = withTromino (not .: colliding) add
         add occupied = Just occupied
 
 
-removeTromino :: Pos -> Tromino a -> Playfield a -> Playfield a
-removeTromino p t f = case removeTromino' p t f of
-    Nothing -> error "Game.removeTromino: Internal logic error."
+removeTetromino :: Pos -> Tetromino a -> Playfield a -> Playfield a
+removeTetromino p t f = case removeTetromino' p t f of
+    Nothing -> error "Game.removeTetromino: Internal logic error."
     Just f' -> f'
 
 
-removeTromino' :: Pos -> Tromino a -> Playfield a -> Maybe (Playfield a)
-removeTromino' = withTromino always remove
+removeTetromino' :: Pos -> Tetromino a -> Playfield a -> Maybe (Playfield a)
+removeTetromino' = withTetromino always remove
     where
         always _ _ = True
         --
@@ -66,15 +66,15 @@ removeTromino' = withTromino always remove
         remove occupied = Just Empty
 
 
-withTromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Pos -> Tromino a -> Playfield b -> Maybe (Playfield b)
-withTromino pred mask pos tromino field = case canOverlay pred trominoGrid existingGrid of
+withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Pos -> Tetromino a -> Playfield b -> Maybe (Playfield b)
+withTetromino pred mask pos tetromino field = case canOverlay pred tetrominoGrid existingGrid of
     False -> Nothing
-    True -> Just $ placeGrid pos (overlay mask trominoGrid' existingGrid) field
+    True -> Just $ placeGrid pos (overlay mask tetrominoGrid' existingGrid) field
     where
-        (w, h) = dimensions trominoGrid
+        (w, h) = dimensions tetrominoGrid
         existingGrid = extractGrid pos w h field
-        trominoGrid = grid tromino
-        trominoGrid' = fmap (toCell $ metadata tromino) trominoGrid
+        tetrominoGrid = grid tetromino
+        tetrominoGrid' = fmap (toCell $ metadata tetromino) tetrominoGrid
 
 
 overlay :: (a -> Maybe b) -> Grid a -> Grid b -> Grid b
