@@ -21,8 +21,15 @@ data Cell a
     deriving (Show, Eq, Ord)
 
 
+type CellGrid a = Grid (Cell a)
+
+
 -- Coord info: (0, 0) is the top left corner of the playfield
-newtype Playfield a = Playfield { unPlayfield :: Grid (Cell a) }
+newtype Playfield a = Playfield { unPlayfield :: CellGrid a }
+
+
+lift :: (CellGrid a -> CellGrid a) -> (Playfield a -> Playfield a)
+lift f = Playfield . f . unPlayfield
 
 
 mkPlayfield :: Dimensions -> Playfield a
@@ -73,7 +80,7 @@ withTetromino pred mask offset tetromino = mergeGrid pred' mask offset tetromino
         pred' = pred . toPresence
 
 
-mergeGrid :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Grid (Cell a) -> Playfield b -> Maybe (Playfield b)
+mergeGrid :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> CellGrid a -> Playfield b -> Maybe (Playfield b)
 mergeGrid pred mask offset grid field = case allowChange of
     False -> Nothing
     True -> Just $ Playfield fieldGrid'
@@ -85,22 +92,38 @@ mergeGrid pred mask offset grid field = case allowChange of
         fieldGrid' = Grid.overlayBy1 mask offset grid existingGrid
 
 
-rowIndices :: Int -> Playfield a -> [Index]
-rowIndices row field = [(x, row) | x <- [0 .. w - 1]]
-    where
-        (w, _) = Grid.dimensions $ unPlayfield field
-
-
 removeRow :: Int -> Playfield a -> Playfield a
-removeRow row = applyGravity . clearRow row
+removeRow row = lift $ applyGravity . clearRow row
 
 
-clearRow :: Int -> Playfield a -> Playfield a
-clearRow = undefined
+rowIndices :: Int -> Grid a -> [Index]
+rowIndices row grid = [(x, row) | x <- [0 .. w - 1]]
+    where
+        (w, _) = Grid.dimensions grid
 
 
-applyGravity :: Playfield a -> Playfield a
+clearRow :: Int -> CellGrid a -> CellGrid a
+clearRow row grid = foldr f grid $ rowIndices row grid
+    where
+        f idx = Grid.put Empty idx
+
+
+applyGravity :: CellGrid a -> CellGrid a
 applyGravity = undefined
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
