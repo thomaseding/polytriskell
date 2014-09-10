@@ -1,100 +1,158 @@
 module Data.Grid (
-    Width,
-    Height,
-    XLoc,
-    YLoc,
+    Index,
+    Dimensions,
     Grid,
     mkGrid,
-    fromList,
-    toList,
-    Data.Grid.zipWith,
+    fromLists,
     dimensions,
     put,
     get,
+    zipWith,
+    overlayBy1,
+    overlayBy2,
+    canOverlay,
 ) where
 
 
-type Width = Int
-type Height = Int
+import Data.Maybe (fromJust)
+import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
+import qualified Math.Geometry.GridMap as GM
+import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
+import Prelude hiding (lookup, zipWith)
 
 
-type XLoc = Int
-type YLoc = Int
+type Index = (Int, Int)
+type Dimensions = (Int, Int)
+type GMap a = LGridMap RectSquareGrid a
 
 
-newtype Grid a = Grid { unGrid :: [[a]] }
-    deriving (Eq, Ord)
-
-
-instance Show a => Show (Grid a) where
-    show = show . toList
+data Grid a = Grid Dimensions (GMap a)
 
 
 instance Functor Grid where
-    fmap f (Grid xss) = Grid $ map (map f) xss
+    fmap = lift . fmap
 
 
-toList :: Grid a -> [[a]]
-toList = unGrid
+lift :: (GMap a -> GMap b) -> (Grid a -> Grid b)
+lift f (Grid dim gm) = Grid dim $ f gm
 
 
-mkGrid :: Width -> Height -> a -> Grid a
-mkGrid w h x = Grid $ replicate h row
+getMap :: Grid a -> GMap a
+getMap (Grid _ gm) = gm
+
+
+mkGrid :: Dimensions -> a -> Grid a
+mkGrid dim = fromList dim . repeat
+
+
+fromList :: Dimensions -> [a] -> Grid a
+fromList dim xs = Grid dim gm
     where
-        row = take w $ repeat x
+        g = uncurry rectSquareGrid dim
+        gm = lazyGridMap g xs
 
 
-fromList :: [[a]] -> Grid a
-fromList = Grid . ensureRect
+fromLists :: [[a]] -> Grid a
+fromLists xss = fromList dim xs
     where
-        allSame xs = all (== head xs) xs
-        isRect = allSame . map length
-        ensureRect xss = case isRect xss of
-            True -> xss
-            False -> error "Grid must be constructed from NxM list of values."
+        dim = (w, h)
+        w = length $ head xss
+        h = length xss
+        xs = concat xss
+
+
+dimensions :: Grid a -> Dimensions
+dimensions (Grid dim _) = dim
+
+
+unionDim :: Dimensions -> Dimensions -> Dimensions
+unionDim (w1, h1) (w2, h2) = (max w1 w2, max h1 h2)
+
+
+inDim :: Index -> Dimensions -> Bool
+(x, y) `inDim` (w, h) = x < w && y < h
+
+
+dimIndices :: Dimensions -> [Index]
+dimIndices (w, h) = [(x, y) | x <- [0 .. w - 1], y <- [0 .. h - 1]]
+
+
+adjust :: (a -> a) -> Index -> Grid a -> Grid a
+adjust f idx = lift $ GM.adjust f idx
+
+
+put :: a -> Index -> Grid a -> Grid a
+put x = adjust $ const x
+
+
+get :: Index -> Grid a -> a
+get idx = fromJust . lookup idx
+
+
+lookup :: Index -> Grid a -> Maybe a
+lookup idx (Grid dim gm) = case idx `inDim` dim of
+    False -> Nothing
+    True -> GM.lookup idx gm
 
 
 zipWith :: (a -> b -> c) -> Grid a -> Grid b -> Grid c
-zipWith f g1 g2 = case dimensions g1 == dimensions g2 of
-    False -> error "Data.Grid.zipWith defined only for same sized grids."
-    True -> let
-        xss1 = unGrid g1
-        xss2 = unGrid g2
-        yss = Prelude.zipWith (Prelude.zipWith f) xss1 xss2
-        in Grid yss
+zipWith f = zipWithTotal $ \(Just x) (Just y) -> f x y
 
 
-dimensions :: Grid a -> (Width, Height)
-dimensions (Grid xss) = (length $ head xss, length xss)
+zipWithTotal :: (Maybe a -> Maybe b -> c) -> Grid a -> Grid b -> Grid c
+zipWithTotal f gridA gridB = fromList dimC $ map g indicesC
+    where
+        dimA = dimensions gridA
+        dimB = dimensions gridB
+        dimC = unionDim dimA dimB
+        indicesC = dimIndices dimC
+        g idx = let
+            a = lookup idx gridA
+            b = lookup idx gridB
+            in f a b
+        
+
+addIndices :: Index -> Index -> Index
+addIndices (x, y) (x', y') = (x + x', y + y')
 
 
-putRow :: [a] -> Int -> Grid a -> Grid a
-putRow row n (Grid rs) = let
-    leadingRs = take n rs
-    trailingRs = drop (n + 1) rs
-    in Grid $ leadingRs ++ [row] ++ trailingRs
+subGrid :: Index -> Dimensions -> Grid a -> Grid a
+subGrid idx subDim grid = fromList subDim subVals
+    where
+        subIndices = map (addIndices idx) $ dimIndices subDim
+        subVals = map (flip get grid) subIndices
 
 
-getRow :: Int -> Grid a -> [a]
-getRow n = head . drop n . unGrid
+overlayBy1 :: (a -> Maybe b) -> Index -> Grid a -> Grid b -> Grid b
+overlayBy1 f = overlayBy2 $ \x _ -> f x
 
 
-replaceNth :: Int -> a -> [a] -> [a]
-replaceNth _ _ [] = error "Cannot replace a value in an empty list."
-replaceNth n x' (x:xs) = case n of
-    0 -> x' : xs
-    _ -> x : replaceNth (n - 1) x' xs
+overlayBy2 :: (a -> b -> Maybe b) -> Index -> Grid a -> Grid b -> Grid b
+overlayBy2 f offset gridA gridB = foldr g gridB $ GM.toList $ getMap gridA
+    where
+        g (idx, x) grid = let
+            idx' = addIndices offset idx
+            y = get idx' gridB
+            in case f x y of
+                Nothing -> grid
+                Just y' -> put y' idx' grid
 
 
-put :: a -> XLoc -> YLoc -> Grid a -> Grid a
-put val x y g = let
-    row = getRow y g
-    row' = replaceNth x val row
-    in putRow row' y g
+canOverlay :: (a -> b -> Bool) -> Index -> Grid a -> Grid b -> Bool
+canOverlay pred offset gridA gridB = foldr f True $ GM.toList $ getMap gridA
+    where
+        f (idx, x) success = case success of
+            False -> False
+            True -> let
+                idx' = addIndices offset idx
+                y = get idx' gridB
+                in pred x y
 
 
-get :: XLoc -> YLoc -> Grid a -> a
-get x y g = getRow y g !! x
+
+
+
+
 
 
 

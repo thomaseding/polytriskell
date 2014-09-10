@@ -2,7 +2,7 @@ module Game.Playfield (
 ) where
 
 
-import Data.Grid (Width, Height, XLoc, YLoc, Grid, mkGrid, toList, dimensions)
+import Data.Grid (Dimensions, Index, Grid)
 import qualified Data.Grid as Grid
 import Data.Function (on)
 import Data.Function.Pointless ((.:))
@@ -16,15 +16,12 @@ data Cell a
     deriving (Show, Eq, Ord)
 
 
-type Pos = (XLoc, YLoc)
-
-
 -- Coord info: (0, 0) is the top left corner of the playfield
 newtype Playfield a = Playfield { unPlayfield :: Grid (Cell a) }
 
 
-mkPlayfield :: Width -> Height -> Playfield a
-mkPlayfield w h = Playfield $ mkGrid w h Empty
+mkPlayfield :: Dimensions -> Playfield a
+mkPlayfield dim = Playfield $ Grid.mkGrid dim Empty
 
 
 toCell :: a -> Presence -> Cell a
@@ -33,15 +30,15 @@ toCell x = \case
     Present -> Occupied x
 
 
-extractGrid :: Pos -> Width -> Height -> Playfield a -> Grid (Cell a)
+extractGrid :: Index -> Dimensions -> Playfield a -> Grid (Cell a)
 extractGrid = undefined
 
 
-placeGrid :: Pos -> Grid (Cell a) -> Playfield a -> Playfield a
+placeGrid :: Index -> Grid (Cell a) -> Playfield a -> Playfield a
 placeGrid = undefined
 
 
-addTetromino :: Pos -> Tetromino a -> Playfield a -> Maybe (Playfield a)
+addTetromino :: Index -> Tetromino a -> Playfield a -> Maybe (Playfield a)
 addTetromino = withTetromino (not .: colliding) add
     where
         colliding Present (Occupied _) = True
@@ -51,13 +48,13 @@ addTetromino = withTetromino (not .: colliding) add
         add occupied = Just occupied
 
 
-removeTetromino :: Pos -> Tetromino a -> Playfield a -> Playfield a
-removeTetromino p t f = case removeTetromino' p t f of
+removeTetromino :: Index -> Tetromino a -> Playfield a -> Playfield a
+removeTetromino idx t f = case removeTetromino' idx t f of
     Nothing -> error "Game.removeTetromino: Internal logic error."
     Just f' -> f'
 
 
-removeTetromino' :: Pos -> Tetromino a -> Playfield a -> Maybe (Playfield a)
+removeTetromino' :: Index -> Tetromino a -> Playfield a -> Maybe (Playfield a)
 removeTetromino' = withTetromino always remove
     where
         always _ _ = True
@@ -66,27 +63,19 @@ removeTetromino' = withTetromino always remove
         remove occupied = Just Empty
 
 
-withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Pos -> Tetromino a -> Playfield b -> Maybe (Playfield b)
-withTetromino pred mask pos tetromino field = case canOverlay pred tetrominoGrid existingGrid of
+withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Tetromino a -> Playfield b -> Maybe (Playfield b)
+withTetromino pred mask offset tetromino field = case allowChange of
     False -> Nothing
-    True -> Just $ placeGrid pos (overlay mask tetrominoGrid' existingGrid) field
+    True -> Just $ Playfield newGrid
     where
-        (w, h) = dimensions tetrominoGrid
-        existingGrid = extractGrid pos w h field
+        dim = Grid.dimensions tetrominoGrid
+        existingGrid = extractGrid offset dim field
         tetrominoGrid = grid tetromino
         tetrominoGrid' = fmap (toCell $ metadata tetromino) tetrominoGrid
+        allowChange = Grid.canOverlay pred offset tetrominoGrid existingGrid
+        newGrid = Grid.overlayBy1 mask offset tetrominoGrid' existingGrid
 
 
-overlay :: (a -> Maybe b) -> Grid a -> Grid b -> Grid b
-overlay mask = Grid.zipWith $ \x y -> case mask x of
-    Nothing -> y
-    Just y' -> y'
-
-
-canOverlay :: (a -> b -> Bool) -> Grid a -> Grid b -> Bool
-canOverlay pred g1 g2 = and $ zipWith pred (toCells g1) (toCells g2)
-    where
-        toCells = concat . toList
 
 
 

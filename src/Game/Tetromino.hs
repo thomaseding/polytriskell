@@ -8,7 +8,7 @@ module Game.Tetromino (
 ) where
 
 
-import Data.Grid (Grid, fromList)
+import Data.Grid (Grid, fromLists)
 import Data.List (transpose)
 import Data.Presence (Presence(..))
 import Data.Rotate (Rotate(..), RotateDir(..))
@@ -85,7 +85,7 @@ mkTetromino' :: TetrominoKind -> [[Char]] -> Tetromino ()
 mkTetromino' k = Tetromino () k . genRotations . toGridSpec
     where
         rotateCW = map reverse . transpose
-        genRotations = Stream.cycle . map fromList . take 4 . iterate rotateCW
+        genRotations = Stream.cycle . map fromLists . take 4 . iterate rotateCW
 
 
 tetrominoI :: Tetromino ()
