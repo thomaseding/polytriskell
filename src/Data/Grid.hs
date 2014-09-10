@@ -18,7 +18,7 @@ import Data.Maybe (fromJust)
 import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
 import qualified Math.Geometry.GridMap as GM
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, pred)
 
 
 type Index = (Int, Int)
@@ -63,10 +63,6 @@ fromLists xss = fromList dim xs
 
 dimensions :: Grid a -> Dimensions
 dimensions (Grid dim _) = dim
-
-
-unionDim :: Dimensions -> Dimensions -> Dimensions
-unionDim (w1, h1) (w2, h2) = (max w1 w2, max h1 h2)
 
 
 inDim :: Index -> Dimensions -> Bool

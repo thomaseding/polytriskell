@@ -1,13 +1,17 @@
 module Game.Playfield (
+    Playfield,
+    mkPlayfield,
+    addTetromino,
+    removeTetromino,
 ) where
 
 
 import Data.Grid (Dimensions, Index, Grid)
 import qualified Data.Grid as Grid
-import Data.Function (on)
 import Data.Function.Pointless ((.:))
 import Data.Presence (Presence(..))
-import Game.Tetromino (Tetromino, grid, metadata)
+import Game.Tetromino (Tetromino, getGrid, getMetadata)
+import Prelude hiding (pred)
 
 
 data Cell a
@@ -28,6 +32,12 @@ toCell :: a -> Presence -> Cell a
 toCell x = \case
     NotPresent -> Empty
     Present -> Occupied x
+
+
+toPresence :: Cell a -> Presence
+toPresence = \case
+    Empty -> NotPresent
+    Occupied _ -> Present
 
 
 addTetromino :: Index -> Tetromino a -> Playfield a -> Maybe (Playfield a)
@@ -52,21 +62,26 @@ removeTetromino' = withTetromino always remove
         always _ _ = True
         --
         remove Empty = Nothing
-        remove occupied = Just Empty
+        remove (Occupied _) = Just Empty
 
 
 withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Tetromino a -> Playfield b -> Maybe (Playfield b)
-withTetromino pred mask offset tetromino field = case allowChange of
+withTetromino pred mask offset tetromino = mergeGrid pred' mask offset tetrominoGrid
+    where
+        tetrominoGrid = fmap (toCell $ getMetadata tetromino) $ getGrid tetromino
+        pred' = pred . toPresence
+
+
+mergeGrid :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Grid (Cell a) -> Playfield b -> Maybe (Playfield b)
+mergeGrid pred mask offset grid field = case allowChange of
     False -> Nothing
     True -> Just $ Playfield fieldGrid'
     where
-        dim = Grid.dimensions tetrominoGrid
+        dim = Grid.dimensions grid
         fieldGrid = unPlayfield field
         existingGrid = Grid.subGrid offset dim fieldGrid
-        tetrominoGrid = grid tetromino
-        tetrominoGrid' = fmap (toCell $ metadata tetromino) tetrominoGrid
-        allowChange = Grid.canOverlay pred offset tetrominoGrid existingGrid
-        fieldGrid' = Grid.overlayBy1 mask offset tetrominoGrid' existingGrid
+        allowChange = Grid.canOverlay pred offset grid existingGrid
+        fieldGrid' = Grid.overlayBy1 mask offset grid existingGrid
 
 
 

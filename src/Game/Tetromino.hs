@@ -2,9 +2,9 @@ module Game.Tetromino (
     TetrominoKind(..),
     Tetromino,
     mkTetromino,
-    kind,
-    grid,
-    metadata,
+    getKind,
+    getGrid,
+    getMetadata,
 ) where
 
 
@@ -42,18 +42,18 @@ mkTetromino :: a -> TetrominoKind -> Tetromino a
 mkTetromino x = fmap (const x) . tetromino
 
 
-metadata :: Tetromino a -> a
-metadata = \case
+getMetadata :: Tetromino a -> a
+getMetadata = \case
     Tetromino x _ _ -> x
 
 
-kind :: Tetromino a -> TetrominoKind
-kind = \case
+getKind :: Tetromino a -> TetrominoKind
+getKind = \case
     Tetromino _ k _ -> k
 
 
-grid :: Tetromino a -> Grid Presence
-grid = \case
+getGrid :: Tetromino a -> Grid Presence
+getGrid = \case
     Tetromino _ _ gs -> Stream.head gs
 
 
