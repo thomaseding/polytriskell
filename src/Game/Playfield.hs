@@ -3,7 +3,8 @@ module Game.Playfield (
     mkPlayfield,
     addTetromino,
     removeTetromino,
-    removeRow,
+    clearRow,
+    applyGravity,
 ) where
 
 
@@ -92,23 +93,19 @@ mergeGrid pred mask offset grid field = case allowChange of
         fieldGrid' = Grid.overlayBy1 mask offset grid existingGrid
 
 
-removeRow :: Int -> Playfield a -> Playfield a
-removeRow row = lift $ applyGravity . clearRow row
-
-
 rowIndices :: Int -> Grid a -> [Index]
 rowIndices row grid = [(x, row) | x <- [0 .. w - 1]]
     where
         (w, _) = Grid.dimensions grid
 
 
-clearRow :: Int -> CellGrid a -> CellGrid a
-clearRow row grid = foldr f grid $ rowIndices row grid
+clearRow :: Int -> Playfield a -> Playfield a
+clearRow row field = foldr f grid $ rowIndices row $ unPlayfield field
     where
         f idx = Grid.put Empty idx
 
 
-applyGravity :: CellGrid a -> CellGrid a
+applyGravity :: Playfield a -> Playfield a
 applyGravity = undefined
 
 
