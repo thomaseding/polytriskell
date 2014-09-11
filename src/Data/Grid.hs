@@ -5,6 +5,7 @@ module Data.Grid (
     mkGrid,
     fromLists,
     dimensions,
+    getIndices,
     put,
     get,
     subGrid,
@@ -71,6 +72,10 @@ inDim :: Index -> Dimensions -> Bool
 
 dimIndices :: Dimensions -> [Index]
 dimIndices (w, h) = [(x, y) | x <- [0 .. w - 1], y <- [0 .. h - 1]]
+
+
+getIndices :: Grid a-> [Index]
+getIndices = dimIndices . dimensions
 
 
 adjust :: (a -> a) -> Index -> Grid a -> Grid a
