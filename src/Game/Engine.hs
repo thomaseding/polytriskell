@@ -14,16 +14,24 @@ import Prelude hiding (Left, Right)
 
 data GamePrompt :: * -> * where
     GetAction :: GamePrompt Action
+    SignalEvent :: Event -> GamePrompt ()
+
+
+data Event
 
 
 data MoveDir = Left | Right
     deriving (Show, Eq, Ord)
 
 
+data Rhythm = Init | Continue
+    deriving (Show, Eq, Ord)
+
+
 data Action
     = DoNothing
     | Rotate RotateDir
-    | Move MoveDir
+    | Move Rhythm MoveDir
     deriving (Show, Eq, Ord)
 
 
@@ -102,7 +110,7 @@ performAction :: (GameMonad m) => Action -> GameEngine u m ()
 performAction = \case
     DoNothing -> return ()
     Rotate rotateDir -> tryRotate rotateDir
-    Move moveDir -> tryMove moveDir
+    Move rhythm moveDir -> tryMove rhythm moveDir
 
 
 tickGravity :: (GameMonad m) => GameEngine u m ()
@@ -113,7 +121,7 @@ tryRotate :: (GameMonad m) => RotateDir -> GameEngine u m ()
 tryRotate = undefined
 
 
-tryMove :: (GameMonad m) => MoveDir -> GameEngine u m ()
+tryMove :: (GameMonad m) => Rhythm -> MoveDir -> GameEngine u m ()
 tryMove = undefined
 
 
