@@ -11,7 +11,7 @@ module Game.Tetromino (
 import Data.Grid (Grid, fromLists)
 import Data.List (transpose)
 import Data.Presence (Presence(..))
-import Data.Rotate (Rotate(..), RotateDir(..))
+import Data.Rotate (Rotatable(..), RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
@@ -30,7 +30,7 @@ instance Functor Tetromino where
     fmap f (Tetromino x k gs) = Tetromino (f x) k gs
 
 
-instance Rotate (Tetromino a) where
+instance Rotatable (Tetromino a) where
     rotate dir = \case
         Tetromino x k gs -> Tetromino x k $ case dir of
             Clockwise -> Stream.tail gs

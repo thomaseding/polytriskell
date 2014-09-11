@@ -1,6 +1,6 @@
 module Data.Rotate (
     RotateDir(..),
-    Rotate(..),
+    Rotatable(..),
 ) where
 
 
@@ -10,7 +10,7 @@ data RotateDir
     deriving (Show, Eq, Ord)
 
 
-class Rotate a where
+class Rotatable a where
     rotate :: RotateDir -> a -> a
 
 

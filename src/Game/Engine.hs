@@ -4,22 +4,27 @@ module Engine (
 
 import Control.Monad.Prompt
 import Control.Monad.State.Lazy
+import Data.Rotate
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import Game.Playfield
 import Game.Tetromino
+import Prelude hiding (Left, Right)
 
 
 data GamePrompt :: * -> * where
-    GetCommand :: GamePrompt Command
+    GetAction :: GamePrompt Action
 
 
-data Command
+data MoveDir = Left | Right
+    deriving (Show, Eq, Ord)
+
+
+data Action
     = DoNothing
-    | RotateClockwise
-    | RotateCounterClockwise
-    | MoveLeft
-    | MoveRight
+    | Rotate RotateDir
+    | Move MoveDir
+    deriving (Show, Eq, Ord)
 
 
 newtype Score = Score { unScore :: Int }
@@ -74,8 +79,9 @@ runGame = isGameOver >>= \case
 tickGame :: (GameMonad m) => GameEngine u m ()
 tickGame = do
     ensurePiece
-    cmd <- prompt GetCommand
-    performCommand cmd
+    action <- prompt GetAction
+    performAction action
+    tickGravity
 
 
 isGameOver :: (GameMonad m) => GameEngine u m Bool
@@ -92,8 +98,23 @@ ensurePiece = gets _currPiece >>= \case
             _futurePieces = Stream.tail pieces }
 
 
-performCommand :: (GameMonad m) => Command -> GameEngine u m ()
-performCommand = undefined
+performAction :: (GameMonad m) => Action -> GameEngine u m ()
+performAction = \case
+    DoNothing -> return ()
+    Rotate rotateDir -> tryRotate rotateDir
+    Move moveDir -> tryMove moveDir
+
+
+tickGravity :: (GameMonad m) => GameEngine u m ()
+tickGravity = undefined
+
+
+tryRotate :: (GameMonad m) => RotateDir -> GameEngine u m ()
+tryRotate = undefined
+
+
+tryMove :: (GameMonad m) => MoveDir -> GameEngine u m ()
+tryMove = undefined
 
 
 
