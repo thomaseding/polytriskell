@@ -3,54 +3,52 @@ module Game.Tetromino (
     Tetromino,
     mkTetromino,
     getKind,
-    getGrid,
-    getMetadata,
 ) where
 
 
+import Data.Cell (Cell(..))
 import Data.Grid (Grid, fromLists)
 import Data.List (transpose)
-import Data.Presence (Presence(..))
 import Data.Rotate (Rotatable(..), RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
+import Game.Piece (Piece(..))
 
 
 data TetrominoKind = I | J | L | O | S | T | Z
     deriving (Show, Eq, Ord)
 
 
-type Rotations = Stream (Grid Presence)
+type CellGrid a = Grid (Cell a)
+type Rotations a = Stream (CellGrid a)
 
 
-data Tetromino a = Tetromino a TetrominoKind Rotations
+data Tetromino a = Tetromino TetrominoKind (Rotations a)
 
 
 instance Functor Tetromino where
-    fmap f (Tetromino x k gs) = Tetromino (f x) k gs
+    fmap f (Tetromino k gs) = Tetromino k $ fmap (fmap g) gs
+        where
+            g = fmap f
 
 
 instance Rotatable (Tetromino a) where
     rotate dir = \case
-        Tetromino x k gs -> Tetromino x k $ case dir of
+        Tetromino k gs -> Tetromino k $ case dir of
             Clockwise -> Stream.tail gs
             CounterClockwise -> Stream.drop 3 gs
+
+
+instance Piece Tetromino a where
+    getGrid (Tetromino _ gs) = Stream.head gs
 
 
 mkTetromino :: a -> TetrominoKind -> Tetromino a
 mkTetromino x = fmap (const x) . tetromino
 
 
-getMetadata :: Tetromino a -> a
-getMetadata (Tetromino x _ _) = x
-
-
 getKind :: Tetromino a -> TetrominoKind
-getKind (Tetromino _ k _) = k
-
-
-getGrid :: Tetromino a -> Grid Presence
-getGrid (Tetromino _ _ gs) = Stream.head gs
+getKind (Tetromino k _) = k
 
 
 tetromino :: TetrominoKind -> Tetromino ()
@@ -64,7 +62,7 @@ tetromino = \case
     Z -> tetrominoZ
 
 
-toGridSpec :: [[Char]] -> [[Presence]]
+toGridSpec :: [[Char]] -> [[Cell ()]]
 toGridSpec = enforceSquare . map (map fromChar)
     where
         isSquare xss = all (== length xss) $ map length xss
@@ -72,13 +70,13 @@ toGridSpec = enforceSquare . map (map fromChar)
             True -> xss
             False -> error "Tetromino specification must be square."
         fromChar c = case c of
-            'O' -> Present
-            '.' -> NotPresent
+            '.' -> Empty
+            'O' -> Occupied ()
             _ -> error "Illegal presence specification."
 
 
 mkTetromino' :: TetrominoKind -> [[Char]] -> Tetromino ()
-mkTetromino' k = Tetromino () k . genRotations . toGridSpec
+mkTetromino' k = Tetromino k . genRotations . toGridSpec
     where
         rotateCW = map reverse . transpose
         genRotations = Stream.cycle . map fromLists . take 4 . iterate rotateCW

@@ -12,26 +12,15 @@ module Game.Playfield (
 ) where
 
 
+import Data.Cell (Cell(..))
 import Data.Grid (Dimensions, Index, Grid)
 import qualified Data.Grid as Grid
 import Data.Function.Pointless ((.:))
-import Data.Presence (Presence(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Game.Tetromino (Tetromino, getGrid, getMetadata)
+import Game.Piece (Piece(..))
+import Game.Tetromino (Tetromino)
 import Prelude hiding (pred)
-
-
-data Cell a
-    = Empty
-    | Occupied a
-    deriving (Show, Eq, Ord)
-
-
-instance Functor Cell where
-    fmap f = \case
-        Empty -> Empty
-        Occupied x -> Occupied $ f x
 
 
 type CellGrid a = Grid (Cell a)
@@ -50,22 +39,10 @@ mkPlayfield :: Dimensions -> Playfield a
 mkPlayfield dim = Playfield $ Grid.mkGrid dim Empty
 
 
-toCell :: a -> Presence -> Cell a
-toCell x = \case
-    NotPresent -> Empty
-    Present -> Occupied x
-
-
-toPresence :: Cell a -> Presence
-toPresence = \case
-    Empty -> NotPresent
-    Occupied _ -> Present
-
-
 addTetromino :: Index -> Tetromino a -> Playfield a -> Maybe (Playfield a)
 addTetromino = withTetromino (not .: colliding) add
     where
-        colliding Present (Occupied _) = True
+        colliding (Occupied _) (Occupied _) = True
         colliding _ _ = False
         --
         add Empty = Nothing
@@ -87,11 +64,10 @@ removeTetromino' = withTetromino always remove
         remove (Occupied _) = Just Empty
 
 
-withTetromino :: (Presence -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Tetromino a -> Playfield b -> Maybe (Playfield b)
-withTetromino pred mask offset tetromino = mergeGrid pred' mask offset tetrominoGrid
+withTetromino :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> Tetromino a -> Playfield b -> Maybe (Playfield b)
+withTetromino pred mask offset tetromino = mergeGrid pred mask offset tetrominoGrid
     where
-        tetrominoGrid = fmap (toCell $ getMetadata tetromino) $ getGrid tetromino
-        pred' = pred . toPresence
+        tetrominoGrid = getGrid tetromino
 
 
 mergeGrid :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> CellGrid a -> Playfield b -> Maybe (Playfield b)
