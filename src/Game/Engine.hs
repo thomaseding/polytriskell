@@ -38,10 +38,14 @@ data GameState a = GameState {
 
 
 newtype GameEngine u m a = GameEngine { unGameEngine :: StateT (GameState u) m a }
-    deriving (Monad, MonadState (GameState u))
+    deriving (Monad, MonadState (GameState u), MonadTrans)
 
 
 type GameMonad a = MonadPrompt GamePrompt a
+
+
+instance (GameMonad m) => MonadPrompt GamePrompt (GameEngine u m) where
+    prompt = lift . prompt
 
 
 playGame :: (GameMonad m) => TetrominoBags a -> m Score
@@ -61,7 +65,9 @@ newPlayfield = mkPlayfield dim
 
 
 tickGame :: (GameMonad m) => GameEngine u m ()
-tickGame = undefined
+tickGame = do
+    ensurePiece
+    return ()
 
 
 ensurePiece :: (GameMonad m) => GameEngine u m ()
