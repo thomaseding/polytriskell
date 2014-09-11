@@ -32,8 +32,7 @@ type TetrominoBags a = Stream (TetrominoBag a)
 data GameState a = GameState {
     _field :: Playfield a,
     _currPiece :: Maybe (Tetromino a),
-    _currBag :: TetrominoBag a,
-    _futureBags :: TetrominoBags a,
+    _futurePieces :: Stream (Tetromino a),
     _score :: Score
 }
 
@@ -51,8 +50,7 @@ playGame bags = liftM _score $ flip execStateT st $ unGameEngine tickGame
         st = GameState {
             _field = newPlayfield,
             _currPiece = Nothing,
-            _currBag = [],
-            _futureBags = bags,
+            _futurePieces = Stream.fromList $ concat $ Stream.toList bags,
             _score = 0 }
 
 
@@ -70,18 +68,10 @@ ensurePiece :: (GameMonad m) => GameEngine u m ()
 ensurePiece = gets _currPiece >>= \case
     Just _ -> return ()
     Nothing -> do
-        bag <- gets _currBag
-        case bag of
-            [] -> do
-                bags <- gets _futureBags
-                modify $ \st -> st {
-                    _currBag = Stream.head bags,
-                    _futureBags = Stream.tail bags }
-                ensurePiece
-            piece : rest -> do
-                modify $ \st -> st {
-                    _currPiece = Just piece,
-                    _currBag = rest }
+        pieces <- gets _futurePieces
+        modify $ \st -> st {
+            _currPiece = Just $ Stream.head pieces,
+            _futurePieces = Stream.tail pieces }
 
 
 
