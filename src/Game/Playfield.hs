@@ -100,9 +100,10 @@ rowIndices row grid = [(x, row) | x <- [0 .. w - 1]]
 
 
 clearRow :: Int -> Playfield a -> Playfield a
-clearRow row field = foldr f grid $ rowIndices row $ unPlayfield field
+clearRow row field = Playfield $ foldr f grid $ rowIndices row grid
     where
         f idx = Grid.put Empty idx
+        grid = unPlayfield field
 
 
 applyGravity :: Playfield a -> Playfield a
