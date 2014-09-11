@@ -7,8 +7,8 @@ import Control.Monad.State.Lazy
 import Data.Rotate
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
+import Game.Piece
 import Game.Playfield
-import Game.Tetromino
 import Prelude hiding (Left, Right)
 
 
@@ -39,26 +39,26 @@ newtype Score = Score { unScore :: Int }
     deriving (Show, Eq, Ord, Num)
 
 
-type TetrominoBag a = [Tetromino a]
-type TetrominoBags a = Stream (TetrominoBag a)
+type Bag a = [a]
 
 
-data GameState a = GameState {
-    _field :: Playfield a,
-    _currPiece :: Maybe (Tetromino a),
-    _futurePieces :: Stream (Tetromino a),
+data GameState p u = GameState {
+    _field :: Playfield u,
+    _currPiece :: Maybe (p u),
+    _futurePieces :: Stream (p u),
     _score :: Score
 }
 
 
-newtype GameEngine u m a = GameEngine { unGameEngine :: StateT (GameState u) m a }
-    deriving (Monad, MonadState (GameState u), MonadTrans)
+newtype GameEngine p u m a = GameEngine {
+    unGameEngine :: StateT (GameState p u) m a
+} deriving (Monad, MonadState (GameState p u), MonadTrans)
 
 
 type GameMonad a = MonadPrompt GamePrompt a
 
 
-instance (GameMonad m) => MonadPrompt GamePrompt (GameEngine u m) where
+instance (GameMonad m) => MonadPrompt GamePrompt (GameEngine p u m) where
     prompt = lift . prompt
 
 
@@ -68,7 +68,7 @@ newPlayfield = mkPlayfield dim
         dim = (10, 22)
 
 
-playGame :: (GameMonad m) => TetrominoBags a -> m Score
+playGame :: (GameMonad m, Piece p a) => Stream (Bag (p a)) -> m Score
 playGame bags = liftM _score $ flip execStateT st $ unGameEngine runGame
     where
         st = GameState {
@@ -78,13 +78,13 @@ playGame bags = liftM _score $ flip execStateT st $ unGameEngine runGame
             _score = 0 }
 
 
-runGame :: (GameMonad m) => GameEngine u m ()
+runGame :: (GameMonad m) => GameEngine p u m ()
 runGame = isGameOver >>= \case
     True -> return ()
     False -> tickGame
 
 
-tickGame :: (GameMonad m) => GameEngine u m ()
+tickGame :: (GameMonad m) => GameEngine p u m ()
 tickGame = do
     ensurePiece
     action <- prompt GetAction
@@ -92,11 +92,11 @@ tickGame = do
     tickGravity
 
 
-isGameOver :: (GameMonad m) => GameEngine u m Bool
+isGameOver :: (GameMonad m) => GameEngine p u m Bool
 isGameOver = undefined
 
 
-ensurePiece :: (GameMonad m) => GameEngine u m ()
+ensurePiece :: (GameMonad m) => GameEngine p u m ()
 ensurePiece = gets _currPiece >>= \case
     Just _ -> return ()
     Nothing -> do
@@ -106,22 +106,22 @@ ensurePiece = gets _currPiece >>= \case
             _futurePieces = Stream.tail pieces }
 
 
-performAction :: (GameMonad m) => Action -> GameEngine u m ()
+performAction :: (GameMonad m) => Action -> GameEngine p u m ()
 performAction = \case
     DoNothing -> return ()
     Rotate rotateDir -> tryRotate rotateDir
     Move rhythm moveDir -> tryMove rhythm moveDir
 
 
-tickGravity :: (GameMonad m) => GameEngine u m ()
+tickGravity :: (GameMonad m) => GameEngine p u m ()
 tickGravity = undefined
 
 
-tryRotate :: (GameMonad m) => RotateDir -> GameEngine u m ()
+tryRotate :: (GameMonad m) => RotateDir -> GameEngine p u m ()
 tryRotate = undefined
 
 
-tryMove :: (GameMonad m) => Rhythm -> MoveDir -> GameEngine u m ()
+tryMove :: (GameMonad m) => Rhythm -> MoveDir -> GameEngine p u m ()
 tryMove = undefined
 
 
