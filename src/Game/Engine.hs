@@ -49,8 +49,14 @@ instance (GameMonad m) => MonadPrompt GamePrompt (GameEngine u m) where
     prompt = lift . prompt
 
 
+newPlayfield :: Playfield a
+newPlayfield = mkPlayfield dim
+    where
+        dim = (10, 22)
+
+
 playGame :: (GameMonad m) => TetrominoBags a -> m Score
-playGame bags = liftM _score $ flip execStateT st $ unGameEngine tickGame
+playGame bags = liftM _score $ flip execStateT st $ unGameEngine runGame
     where
         st = GameState {
             _field = newPlayfield,
@@ -59,16 +65,21 @@ playGame bags = liftM _score $ flip execStateT st $ unGameEngine tickGame
             _score = 0 }
 
 
-newPlayfield :: Playfield a
-newPlayfield = mkPlayfield dim
-    where
-        dim = (10, 22)
+runGame :: (GameMonad m) => GameEngine u m ()
+runGame = isGameOver >>= \case
+    True -> return ()
+    False -> tickGame
 
 
 tickGame :: (GameMonad m) => GameEngine u m ()
 tickGame = do
     ensurePiece
-    return ()
+    cmd <- prompt GetCommand
+    performCommand cmd
+
+
+isGameOver :: (GameMonad m) => GameEngine u m Bool
+isGameOver = undefined
 
 
 ensurePiece :: (GameMonad m) => GameEngine u m ()
@@ -81,6 +92,8 @@ ensurePiece = gets _currPiece >>= \case
             _futurePieces = Stream.tail pieces }
 
 
+performCommand :: (GameMonad m) => Command -> GameEngine u m ()
+performCommand = undefined
 
 
 
