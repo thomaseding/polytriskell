@@ -15,7 +15,8 @@ data GamePrompt :: * -> * where
 
 
 data Command
-    = RotateClockwise
+    = DoNothing
+    | RotateClockwise
     | RotateCounterClockwise
     | MoveLeft
     | MoveRight
