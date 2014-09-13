@@ -14,12 +14,14 @@ import Control.Monad.Trans
 import Data.Cell
 import Data.Char
 import qualified Data.List.NonEmpty as NonEmpty
+import Data.Rotate
 import qualified Data.Stream as Stream
 import Game.Engine
 import Game.Playfield
 import Game.Tetromino
 import Prelude hiding (Left, Right)
 import System.Console.ANSI
+import System.IO
 import System.Random
 import System.Random.Shuffle
 import System.Timeout
@@ -76,6 +78,7 @@ pieces = [
 
 main :: IO ()
 main = do
+    hSetBuffering stdin NoBuffering
     gen <- getStdGen
     let bags = shuffleAll gen pss
     let bags' = Stream.fromList $ map NonEmpty.fromList bags
@@ -102,6 +105,8 @@ getAction = liftIO $ do
     timeout 1000000 getChar >>= clearChars . \case
         Just 'a' -> Move Init Left
         Just 'd' -> Move Init Right
+        Just 'q' -> Rotate CounterClockwise
+        Just 'e' -> Rotate Clockwise
         _ -> DoNothing
     where
         clearChars c = do
