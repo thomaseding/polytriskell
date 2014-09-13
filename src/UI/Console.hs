@@ -116,16 +116,21 @@ drawBoard :: Playfield U -> Console ()
 drawBoard field = liftIO $ do
     clearScreen
     setCursorPosition 0 0
+    putStrLn $ replicate (w + 2) borderChar
     forM_ rows $ \row -> do
+        putChar borderChar
         forM_ row $ \cell -> let
             (c, color) = cellToChar cell
             in do
                 setSGR [SetColor Foreground Vivid color]
                 putChar c
+        putChar borderChar
         cursorDownLine 1
+    putStrLn $ replicate (w + 2) borderChar
     _ <- getChar
     return ()
     where
+        borderChar = chr 9618
         dim = (10, 22)
         (w, h) = dim
         rows = map (`getRow` field) [0 .. h - 1]
