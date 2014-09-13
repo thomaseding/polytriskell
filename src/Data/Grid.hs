@@ -17,6 +17,7 @@ module Data.Grid (
 
 import Data.Maybe (fromJust)
 import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
+import qualified Math.Geometry.Grid as G
 import qualified Math.Geometry.GridMap as GM
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Prelude hiding (lookup, pred)
@@ -34,6 +35,10 @@ instance Functor Grid where
     fmap = lift . fmap
 
 
+instance (Show a) => Show (Grid a) where
+    show (Grid dim gm) = show $ GM.toMap gm
+
+
 lift :: (GMap a -> GMap b) -> (Grid a -> Grid b)
 lift f (Grid dim gm) = Grid dim $ f gm
 
@@ -46,20 +51,27 @@ mkGrid :: Dimensions -> a -> Grid a
 mkGrid dim = fromList dim . repeat
 
 
+swap :: (a, b) -> (b, a)
+swap (x, y) = (y, x)
+
+
 fromList :: Dimensions -> [a] -> Grid a
 fromList dim xs = Grid dim gm
     where
-        g = uncurry rectSquareGrid dim
+        g = uncurry rectSquareGrid $ swap dim
         gm = lazyGridMap g xs
 
 
 fromLists :: [[a]] -> Grid a
-fromLists xss = fromList dim xs
+fromLists xss = case isRect of
+    False -> error "Data.Grid.fromLists expects a regular 2D array."
+    True -> fromList dim xs
     where
         dim = (w, h)
         w = length $ head xss
         h = length xss
         xs = concat xss
+        isRect = all (== w) $ map length xss
 
 
 dimensions :: Grid a -> Dimensions
@@ -87,7 +99,11 @@ put x = adjust $ const x
 
 
 get :: Index -> Grid a -> a
-get idx = fromJust . lookup idx
+get idx grid = case lookup idx grid of
+    Nothing -> error $ "Grid.get:Index=" ++ show idx ++ ",Dim=" ++ show (dimensions grid) ++ ";;;" ++ let
+        Grid _ gm = grid
+        in show $ G.indices $ GM.toGrid gm
+    Just x -> x
 
 
 lookup :: Index -> Grid a -> Maybe a
@@ -101,9 +117,9 @@ addIndices (x, y) (x', y') = (x + x', y + y')
 
 
 subGrid :: Index -> Dimensions -> Grid a -> Grid a
-subGrid idx subDim grid = fromList subDim subVals
+subGrid offset subDim grid = fromList subDim subVals
     where
-        subIndices = map (addIndices idx) $ dimIndices subDim
+        subIndices = map (addIndices offset) $ dimIndices subDim
         subVals = map (flip get grid) subIndices
 
 
