@@ -119,7 +119,7 @@ type ColoredChar = (Char, Color)
 
 cellToChar :: Cell U -> ColoredChar
 cellToChar = \case
-    Empty -> ('.', White)
+    Empty -> (' ', White)
     Occupied block -> let
         c = chr 9608
         color = _color block
@@ -131,24 +131,26 @@ drawBoard field = liftIO $ do
     clearScreen
     setCursorPosition 0 0
     setSGR [Reset]
-    putStrLn $ replicate (w + 2) borderChar
+    putStrLn2 $ replicate (w + 2) borderChar
     forM_ rows $ \row -> do
-        putChar borderChar
+        putChar2 borderChar
         forM_ row $ \cell -> let
             (c, color) = cellToChar cell
             in do
                 setSGR [SetColor Foreground Vivid color]
-                putChar c
+                putChar2 c
         setSGR [Reset]
-        putChar borderChar
+        putChar2 borderChar
         cursorDownLine 1
-    putStrLn $ replicate (w + 2) borderChar
+    putStrLn2 $ replicate (w + 2) borderChar
     return ()
     where
         borderChar = chr 9618
         dim = (10, 22)
         (w, h) = dim
         rows = map (`getRow` field) [0 .. h - 1]
+        putChar2 c = putChar c >> putChar c
+        putStrLn2 s = mapM_ putChar2 s >> putChar '\n'
 
 
 
