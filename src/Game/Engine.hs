@@ -112,8 +112,7 @@ runGame = do
 
 
 initGame :: (GameContext p u m) => GameEngine p u m ()
-initGame = do
-    nextPiece
+initGame = nextPiece
 
 
 gameLoop :: (GameContext p u m) => GameEngine p u m ()
@@ -162,7 +161,9 @@ performAction = \case
     DoNothing -> return ()
     QuitGame -> quitGame
     Rotate rotateDir -> tryRotate rotateDir
-    Move rhythm moveDir -> tryMove rhythm moveDir
+    Move rhythm moveDir -> do
+        _ <- tryMove rhythm moveDir
+        return ()
 
 
 quitGame :: (GameContext p u m) => GameEngine p u m ()
@@ -174,7 +175,9 @@ gameOver = modify $ \st -> st { _gameOver = True }
 
 
 tickGravity :: (GameContext p u m) => GameEngine p u m ()
-tickGravity = tryMove Init Down
+tickGravity = tryMove Init Down >>= \case
+    True -> return ()
+    False -> nextPiece
 
 
 tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m ()
@@ -197,17 +200,19 @@ moveIndex dir (x, y) = case dir of
     Down -> (x, y + 1)
 
 
-tryMove :: (GameContext p u m) => Rhythm -> MoveDir -> GameEngine p u m ()
+tryMove :: (GameContext p u m) => Rhythm -> MoveDir -> GameEngine p u m Bool
 tryMove _ dir = do
     p <- gets _piece
     idx <- gets _pieceIndex
     let idx' = moveIndex dir idx
     field <- gets $ removePiece idx p . _field
     case addPiece idx' p field of
-        Nothing -> return ()
-        Just field' -> modify $ \st -> st {
-            _pieceIndex = idx',
-            _field = field' }
+        Nothing -> return False
+        Just field' -> do
+            modify $ \st -> st {
+                _pieceIndex = idx',
+                _field = field' }
+            return True
 
 
 
