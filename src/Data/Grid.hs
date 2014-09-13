@@ -15,6 +15,7 @@ module Data.Grid (
 ) where
 
 
+import Data.List (transpose)
 import Data.Maybe (fromJust)
 import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
 import qualified Math.Geometry.Grid as G
@@ -65,12 +66,11 @@ fromList dim xs = Grid dim gm
 fromLists :: [[a]] -> Grid a
 fromLists xss = case isRect of
     False -> error "Data.Grid.fromLists expects a regular 2D array."
-    True -> fromList dim xs
+    True -> fromList dim $ concat $ transpose xss
     where
         dim = (w, h)
         w = length $ head xss
         h = length xss
-        xs = concat xss
         isRect = all (== w) $ map length xss
 
 
