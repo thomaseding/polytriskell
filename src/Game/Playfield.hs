@@ -76,9 +76,8 @@ mergeGrid pred mask offset grid field = case allowChange of
     where
         dim = Grid.dimensions grid
         fieldGrid = unPlayfield field
-        existingGrid = Grid.subGrid offset dim fieldGrid
-        allowChange = Grid.canOverlay pred offset grid existingGrid
-        fieldGrid' = Grid.overlayBy1 mask offset grid existingGrid
+        allowChange = Grid.canOverlay pred offset grid fieldGrid
+        fieldGrid' = Grid.overlayBy1 mask offset grid fieldGrid
 
 
 rowIndices :: Int -> Grid a -> [Index]
