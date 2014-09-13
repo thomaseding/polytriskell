@@ -1,3 +1,9 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module UI.Console (
 ) where
 
@@ -11,6 +17,7 @@ import qualified Data.Stream as Stream
 import Game.Engine
 import Game.Playfield
 import Game.Tetromino
+import UI.HSCurses.CursesHelper
 
 
 pieces :: [Tetromino ()]
@@ -19,8 +26,9 @@ pieces = map (mkTetromino ()) [I, J, L, O, S, T, Z]
 
 main :: IO ()
 main = do
-    score <- runConsole $ playGame bags
-    print score
+    start
+    --score <- runConsole $ playGame bags
+    --print score
     where
         bag = NonEmpty.fromList pieces
         bags = Stream.repeat bag

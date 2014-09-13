@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Data.Cell (
     Cell(..),
 ) where
