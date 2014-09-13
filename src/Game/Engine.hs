@@ -148,7 +148,7 @@ nextPiece = do
     let grid = getGrid p
         (pw, ph) = Grid.dimensions grid
         (gw, gh) = gameDim
-        startIdx = ((gw - pw) `div` 2, 8)
+        startIdx = ((gw - pw) `div` 2, 0)
     case addPiece startIdx p field of
         Nothing -> gameOver
         Just field' -> modify $ \st -> st {

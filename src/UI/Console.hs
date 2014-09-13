@@ -18,9 +18,11 @@ import qualified Data.Stream as Stream
 import Game.Engine
 import Game.Playfield
 import Game.Tetromino
+import Prelude hiding (Left, Right)
 import System.Console.ANSI
 import System.Random
 import System.Random.Shuffle
+import System.Timeout
 
 
 shuffleG :: RandomGen g => [a] -> g -> ([a], g)
@@ -97,7 +99,14 @@ instance MonadPrompt (GamePrompt U) Console where
 
 getAction :: Console Action
 getAction = liftIO $ do
-    return DoNothing
+    timeout 1000000 getChar >>= clearChars . \case
+        Just 'a' -> Move Init Left
+        Just 'd' -> Move Init Right
+        _ -> DoNothing
+    where
+        clearChars c = do
+            _ <- timeout 100 $ replicateM_ 10000 getChar
+            return c
 
 
 type ColoredChar = (Char, Color)
@@ -116,6 +125,7 @@ drawBoard :: Playfield U -> Console ()
 drawBoard field = liftIO $ do
     clearScreen
     setCursorPosition 0 0
+    setSGR [Reset]
     putStrLn $ replicate (w + 2) borderChar
     forM_ rows $ \row -> do
         putChar borderChar
@@ -124,10 +134,10 @@ drawBoard field = liftIO $ do
             in do
                 setSGR [SetColor Foreground Vivid color]
                 putChar c
+        setSGR [Reset]
         putChar borderChar
         cursorDownLine 1
     putStrLn $ replicate (w + 2) borderChar
-    _ <- getChar
     return ()
     where
         borderChar = chr 9618
