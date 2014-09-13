@@ -138,15 +138,15 @@ overlayBy2 f offset gridA gridB = foldr g gridB $ GM.toList $ getMap gridA
                 Just y' -> put y' idx' grid
 
 
-canOverlay :: (a -> b -> Bool) -> Index -> Grid a -> Grid b -> Bool
+canOverlay :: (a -> Maybe b -> Bool) -> Index -> Grid a -> Grid b -> Bool
 canOverlay pred offset gridA gridB = foldr f True $ GM.toList $ getMap gridA
     where
         f (idx, x) success = case success of
             False -> False
             True -> let
                 idx' = addIndices offset idx
-                y = get idx' gridB
-                in pred x y
+                my = lookup idx' gridB
+                in pred x my
 
 
 

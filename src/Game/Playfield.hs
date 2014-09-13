@@ -41,8 +41,11 @@ mkPlayfield dim = Playfield $ Grid.mkGrid dim Empty
 addPiece :: (Piece p a) => Index -> p a -> Playfield a -> Maybe (Playfield a)
 addPiece = withPiece (not .: colliding) add
     where
-        colliding (Occupied _) (Occupied _) = True
-        colliding _ _ = False
+        colliding (Occupied _) = \case
+            Nothing -> True
+            Just (Occupied _) -> True
+            _ -> False
+        colliding _ = const False
         --
         add Empty = Nothing
         add occupied = Just occupied
@@ -63,13 +66,13 @@ removePiece' = withPiece always remove
         remove (Occupied _) = Just Empty
 
 
-withPiece :: (Piece p a) => (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> p a -> Playfield b -> Maybe (Playfield b)
+withPiece :: (Piece p a) => (Cell a -> Maybe (Cell b) -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> p a -> Playfield b -> Maybe (Playfield b)
 withPiece pred mask offset tetromino = mergeGrid pred mask offset tetrominoGrid
     where
         tetrominoGrid = getGrid tetromino
 
 
-mergeGrid :: (Cell a -> Cell b -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> CellGrid a -> Playfield b -> Maybe (Playfield b)
+mergeGrid :: (Cell a -> Maybe (Cell b) -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> CellGrid a -> Playfield b -> Maybe (Playfield b)
 mergeGrid pred mask offset grid field = case allowChange of
     False -> Nothing
     True -> Just $ Playfield fieldGrid'
