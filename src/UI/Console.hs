@@ -27,30 +27,16 @@ import System.Random.Shuffle
 import System.Timeout
 
 
-shuffleG :: RandomGen g => [a] -> g -> ([a], g)
-shuffleG xs g = let
-    (ns, g') = rseq (length xs) g
-    in (shuffle xs ns, g')
+splits :: RandomGen g => g -> [g]
+splits g = let
+    (g1, g2) = split g
+    in g1 : splits g2
+
+
+shuffleAll :: RandomGen g => [[a]] -> g -> [[a]]
+shuffleAll xss = zipWith f xss . splits
     where
-        rseq :: RandomGen g => Int -> g -> ([Int], g)
-        rseq n g = let
-            xs_gs = rseq' (n - 1) g
-            xs = init $ map fst xs_gs
-            g' = last $ map snd xs_gs
-            in (xs, g')
-            where
-                rseq' :: RandomGen g => Int -> g -> [(Int, g)]
-                rseq' 0 g = [(-1, g)]
-                rseq' i g = (j, g') : rseq' (i - 1) g'
-                    where
-                        (j, g') = randomR (0, i) g
-
-
-shuffleAll :: RandomGen g => g -> [[a]] -> [[a]]
-shuffleAll _ [] = []
-shuffleAll g (xs:xss) = let
-    (xs', g') = shuffleG xs g
-    in xs' : shuffleAll g' xss
+        f xs = shuffle' xs (length xs)
 
 
 data Block = Block {
@@ -80,7 +66,7 @@ main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
     gen <- getStdGen
-    let bags = shuffleAll gen pss
+    let bags = shuffleAll pss gen
     let bags' = Stream.fromList $ map NonEmpty.fromList bags
     score <- runConsole $ playGame bags'
     print score
