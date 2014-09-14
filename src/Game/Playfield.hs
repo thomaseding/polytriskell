@@ -9,6 +9,7 @@ module Game.Playfield (
     putRow,
     clearRow,
     dropRow,
+    dropRowsAbove,
 ) where
 
 
@@ -110,6 +111,12 @@ dropRow :: Int -> Playfield a -> Playfield a
 dropRow row field = putRow (row + 1) cells $ clearRow row field
     where
         cells = getRow row field
+
+
+dropRowsAbove :: Int -> Playfield a -> Playfield a
+dropRowsAbove row field = foldr dropRow field rows
+    where
+        rows = [0 .. row - 1]
 
 
 {-

@@ -13,6 +13,7 @@ import Control.Monad.Prompt
 import Control.Monad.Trans
 import Data.Cell
 import Data.Char
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Rotate
 import qualified Data.Stream as Stream
@@ -87,8 +88,13 @@ newtype Console a = Console { runConsole :: IO a }
 instance MonadPrompt (GamePrompt U) Console where
     prompt = \case
         BoardChanged field -> drawBoard field
+        RowsCleared rows -> rowsCleared rows
         GetAction -> getAction
         PieceLocked -> lockAction
+
+
+rowsCleared :: NonEmpty Int -> Console ()
+rowsCleared _ = return ()
 
 
 lockAction :: Console (LockAction U)

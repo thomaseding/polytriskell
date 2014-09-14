@@ -20,16 +20,20 @@ module Game.Engine (
 
 import Control.Monad.Prompt
 import Control.Monad.State.Lazy
+import Data.Cell
+import Data.Foldable (foldr)
 import Data.Grid (Index, Dimensions)
 import qualified Data.Grid as Grid
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
+import Data.Maybe (mapMaybe)
 import Data.Rotate
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import Game.Piece
-import Game.Playfield
-import Prelude hiding (Left, Right)
+import Game.Playfield (Playfield)
+import qualified Game.Playfield as Field
+import Prelude hiding (Left, Right, foldr)
 
 
 type LockAction u = u -> u
@@ -38,6 +42,7 @@ type LockAction u = u -> u
 data GamePrompt :: * -> * -> * where
     GetAction :: GamePrompt u Action
     BoardChanged :: Playfield u -> GamePrompt u ()
+    RowsCleared :: NonEmpty Int -> GamePrompt u ()
     PieceLocked :: GamePrompt u (LockAction u)
 
 
@@ -85,7 +90,7 @@ instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
 
 
 newPlayfield :: Playfield a
-newPlayfield = mkPlayfield gameDim
+newPlayfield = Field.mkPlayfield gameDim
 
 
 gameDim :: Dimensions
@@ -148,7 +153,7 @@ nextPiece = do
         (pw, ph) = Grid.dimensions grid
         (gw, gh) = gameDim
         startIdx = ((gw - pw) `div` 2, 0)
-    case addPiece startIdx p field of
+    case Field.addPiece startIdx p field of
         Nothing -> gameOver
         Just field' -> modify $ \st -> st {
             _pieceIndex = startIdx,
@@ -185,6 +190,7 @@ lockPiece = do
     f <- prompt PieceLocked
     modify $ \st -> st { _piece = fmap f $ _piece st }
     tryMoveBy id
+    tryClearRows
     nextPiece
 
 
@@ -193,8 +199,8 @@ tryRotate dir = do
     p <- gets _piece
     let p' = rotate dir p
     idx <- gets _pieceIndex
-    field <- gets $ removePiece idx p . _field
-    case addPiece idx p' field of
+    field <- gets $ Field.removePiece idx p . _field
+    case Field.addPiece idx p' field of
         Nothing -> return ()
         Just field' -> modify $ \st -> st {
             _piece = p',
@@ -217,8 +223,8 @@ tryMoveBy fIndex = do
     p <- gets _piece
     idx <- gets _pieceIndex
     let idx' = fIndex idx
-    field <- gets $ removePiece idx p . _field
-    case addPiece idx' p field of
+    field <- gets $ Field.removePiece idx p . _field
+    case Field.addPiece idx' p field of
         Nothing -> return False
         Just field' -> do
             modify $ \st -> st {
@@ -227,7 +233,47 @@ tryMoveBy fIndex = do
             return True
 
 
+getRows :: (GameContext p u m) => GameEngine p u m [[Cell u]]
+getRows = do
+    field <- gets _field
+    let (_, h) = gameDim
+        idxs = [0 .. h - 1]
+        rows = map (`Field.getRow` field) idxs
+    return rows
 
+
+isFull :: [Cell a] -> Bool
+isFull = and . map f
+    where
+        f = \case
+            Empty -> False
+            _ -> True
+
+
+tryClearRows :: (GameContext p u m) => GameEngine p u m ()
+tryClearRows = do
+    rows <- getRows
+    let idxs = flip mapMaybe (zip rows [0..]) $ \(row, idx) -> case isFull row of
+            False -> Nothing
+            True -> Just idx
+    case NonEmpty.nonEmpty idxs of
+        Nothing -> return ()
+        Just idxs' -> clearRows idxs'
+
+
+clearRows :: (GameContext p u m) => NonEmpty Int -> GameEngine p u m ()
+clearRows idxs = do
+    prompt $ RowsCleared idxs
+    mapM clearRow $ NonEmpty.toList idxs
+    field <- gets _field
+    prompt $ BoardChanged field
+
+
+clearRow :: (GameContext p u m) => Int -> GameEngine p u m ()
+clearRow idx = do
+    field <- gets $ Field.clearRow idx . _field
+    let field' = Field.dropRowsAbove idx field
+    modify $ \st -> st { _field = field' }
 
 
 
