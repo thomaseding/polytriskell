@@ -8,7 +8,7 @@
 
 module Game.Engine (
     GamePrompt(..),
-    Event(..),
+    LockAction,
     MoveDir(..),
     Rhythm(..),
     Action(..),
@@ -32,13 +32,13 @@ import Game.Playfield
 import Prelude hiding (Left, Right)
 
 
+type LockAction u = u -> u
+
+
 data GamePrompt :: * -> * -> * where
-    GetAction :: GamePrompt a Action
-    SignalEvent :: Event u -> GamePrompt u ()
-
-
-data Event u
-    = BoardChanged (Playfield u)
+    GetAction :: GamePrompt u Action
+    BoardChanged :: Playfield u -> GamePrompt u ()
+    PieceLocked :: GamePrompt u (LockAction u)
 
 
 data MoveDir = Left | Right | Down
@@ -77,7 +77,7 @@ newtype GameEngine p u m a = GameEngine {
 
 
 type GameMonad u a = MonadPrompt (GamePrompt u) a
-type GameContext p u m = (GameMonad u m, Piece p u)
+type GameContext p u m = (GameMonad u m, Piece p u, Functor p)
 
 
 instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
@@ -129,7 +129,7 @@ tickGame = do
     performAction action
     tickGravity
     field <- gets _field
-    prompt $ SignalEvent $ BoardChanged field
+    prompt $ BoardChanged field
 
 
 isGameOver :: (GameContext p u m) => GameEngine p u m Bool
@@ -177,7 +177,15 @@ gameOver = modify $ \st -> st { _gameOver = True }
 tickGravity :: (GameContext p u m) => GameEngine p u m ()
 tickGravity = tryMove Init Down >>= \case
     True -> return ()
-    False -> nextPiece
+    False -> lockPiece
+
+
+lockPiece :: (GameContext p u m) => GameEngine p u m ()
+lockPiece = do
+    f <- prompt PieceLocked
+    modify $ \st -> st { _piece = fmap f $ _piece st }
+    tryMoveM Init Nothing
+    nextPiece
 
 
 tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m ()
@@ -193,18 +201,24 @@ tryRotate dir = do
             _field = field' }
 
 
-moveIndex :: MoveDir -> Index -> Index
-moveIndex dir (x, y) = case dir of
-    Left -> (x - 1, y)
-    Right -> (x + 1, y)
-    Down -> (x, y + 1)
+moveIndex :: Maybe MoveDir -> Index -> Index
+moveIndex mDir (x, y) = case mDir of
+    Nothing -> (x, y)
+    Just dir -> case dir of
+        Left -> (x - 1, y)
+        Right -> (x + 1, y)
+        Down -> (x, y + 1)
 
 
 tryMove :: (GameContext p u m) => Rhythm -> MoveDir -> GameEngine p u m Bool
-tryMove _ dir = do
+tryMove rhythm = tryMoveM rhythm . Just
+
+
+tryMoveM :: (GameContext p u m) => Rhythm -> Maybe MoveDir -> GameEngine p u m Bool
+tryMoveM _ mDir = do
     p <- gets _piece
     idx <- gets _pieceIndex
-    let idx' = moveIndex dir idx
+    let idx' = moveIndex mDir idx
     field <- gets $ removePiece idx p . _field
     case addPiece idx' p field of
         Nothing -> return False

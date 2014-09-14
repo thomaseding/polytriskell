@@ -40,6 +40,8 @@ shuffleAll xss = zipWith f xss . splits
 
 
 data Block = Block {
+    _intensity :: ColorIntensity,
+    _char :: Char,
     _color :: Color
 }
 
@@ -58,7 +60,10 @@ pieces = [
     mk Red Z ]
     where
         mk color = let
-            block = Block { _color = color }
+            block = Block {
+                _intensity = Vivid,
+                _char = chr 9608,
+                _color = color }
             in mkTetromino block
 
 
@@ -81,9 +86,14 @@ newtype Console a = Console { runConsole :: IO a }
 
 instance MonadPrompt (GamePrompt U) Console where
     prompt = \case
-        SignalEvent e -> case e of
-            BoardChanged field -> drawBoard field
+        BoardChanged field -> drawBoard field
         GetAction -> getAction
+        PieceLocked -> lockAction
+
+
+lockAction :: Console (LockAction U)
+lockAction = return $ \block -> block {
+    _intensity = Dull }
 
 
 getAction :: Console Action
@@ -100,16 +110,17 @@ getAction = liftIO $ do
             return c
 
 
-type ColoredChar = (Char, Color)
+type ColoredChar = (Char, Color, ColorIntensity)
 
 
 cellToChar :: Cell U -> ColoredChar
 cellToChar = \case
-    Empty -> (' ', White)
+    Empty -> (' ', White, Vivid)
     Occupied block -> let
-        c = chr 9608
+        intensity = _intensity block
+        char = _char block
         color = _color block
-        in (c, color)
+        in (char, color, intensity)
 
 
 drawBoard :: Playfield U -> Console ()
@@ -121,9 +132,9 @@ drawBoard field = liftIO $ do
     forM_ rows $ \row -> do
         putChar2 borderChar
         forM_ row $ \cell -> let
-            (c, color) = cellToChar cell
+            (c, color, intensity) = cellToChar cell
             in do
-                setSGR [SetColor Foreground Vivid color]
+                setSGR [SetColor Foreground intensity color]
                 putChar2 c
         setSGR [Reset]
         putChar2 borderChar
