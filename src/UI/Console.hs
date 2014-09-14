@@ -95,8 +95,8 @@ main = do
     let bags = shuffleAll pss gen
     let bags' = Stream.fromList $ map NonEmpty.fromList bags
     initScreen
-    score <- runConsole $ playGame bags'
-    print score
+    _ <- runConsole $ playGame bags'
+    return ()
     where
         ps = pieces
         pss = repeat ps
@@ -163,14 +163,41 @@ lockAction = return $ \block -> block {
     _intensity = Dull }
 
 
+data Key
+    = CharKey Char
+    | UpKey
+    | DownKey
+    | RightKey
+    | LeftKey
+
+
+getKey :: IO Key
+getKey = getChar >>= \case
+    '\ESC' -> fmap esc $ timeout 100 $ getChar >>= \case
+        '[' -> getChar >>= \case
+            'A' -> return UpKey
+            'B' -> return DownKey
+            'C' -> return RightKey
+            'D' -> return LeftKey
+    c -> return $ CharKey c
+    where
+        esc = \case
+            Nothing -> CharKey '\ESC'
+            Just key -> key
+
+
 getAction :: Console Action
 getAction = liftIO $ do
-    timeout 1000000 getChar >>= clearChars . \case
-        Just 'a' -> Move Init Left
-        Just 'd' -> Move Init Right
-        Just 'q' -> Rotate CounterClockwise
-        Just 'e' -> Rotate Clockwise
-        _ -> DoNothing
+    timeout 1000000 getKey >>= return . \case
+        Nothing -> DoNothing
+        Just key -> case key of
+            RightKey -> Move Init Right
+            LeftKey -> Move Init Left
+            UpKey -> Rotate Clockwise
+            CharKey c -> case c of
+                '\ESC' -> QuitGame
+                _ -> DoNothing
+            _ -> DoNothing
     where
         clearChars c = do
             _ <- timeout 100 $ replicateM_ 10000 getChar
