@@ -88,14 +88,23 @@ boardRow :: Int
 boardRow = 4
 
 
+ghostFunc :: U -> U
+ghostFunc block = block { _char = chr 9617 }
+
+
+gameConfig :: GameConfig U
+gameConfig = defaultGameConfig {
+    _ghostFunc = Just ghostFunc
+}
+
+
 main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
     gen <- getStdGen
-    let bags = shuffleAll pss gen
-    let bags' = Stream.fromList $ map NonEmpty.fromList bags
+    let ps = Stream.fromList $ concat $ shuffleAll pss gen
     initScreen
-    _ <- runConsole $ playGame bags'
+    _ <- runConsole $ playGame gameConfig ps
     return ()
     where
         ps = pieces
@@ -145,7 +154,7 @@ newtype Console a = Console { runConsole :: IO a }
 
 instance MonadPrompt (GamePrompt U) Console where
     prompt = \case
-        BoardChanged field -> drawBoard field
+        PlayfieldChanged field -> drawBoard field
         RowsCleared rows totalCleared -> rowsCleared rows totalCleared
         GetAction -> getAction
         PieceLocked -> lockAction
@@ -237,8 +246,7 @@ drawBoard field = liftIO $ do
     return ()
     where
         borderChar = chr 9618
-        dim = (10, 22)
-        (w, h) = dim
+        (w, h) = _playfieldDim gameConfig
         rows = map (`getRow` field) [0 .. h - 1]
         putChar2 c = putChar c >> putChar c
         putStrLn2 s = mapM_ putChar2 s >> putChar '\n'

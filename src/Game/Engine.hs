@@ -7,6 +7,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Game.Engine (
+    GameConfig(..),
+    defaultGameConfig,
     GamePrompt(..),
     LockAction,
     MoveDir(..),
@@ -46,7 +48,7 @@ data GamePrompt :: * -> * -> * where
     GetAction :: GamePrompt u Action
     ScoreChanged :: Score -> GamePrompt u ()
     LevelChanged :: Level -> GamePrompt u ()
-    BoardChanged :: Playfield u -> GamePrompt u ()
+    PlayfieldChanged :: Playfield u -> GamePrompt u ()
     RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
     PieceLocked :: GamePrompt u (LockAction u)
 
@@ -83,7 +85,14 @@ instance Show Score where
     show = show . unScore
 
 
+data GameConfig u = GameConfig {
+    _ghostFunc :: Maybe (u -> u),
+    _playfieldDim :: Dimensions
+}
+
+
 data GameState p u = GameState {
+    _config :: GameConfig u,
     _field :: Playfield u,
     _piece :: p u,
     _pieceIndex :: Index,
@@ -108,20 +117,19 @@ instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
     prompt = lift . prompt
 
 
-newPlayfield :: Playfield a
-newPlayfield = Field.mkPlayfield gameDim
+defaultGameConfig :: GameConfig u
+defaultGameConfig = GameConfig {
+    _ghostFunc = Nothing,
+    _playfieldDim = (10, 22)
+}
 
 
-gameDim :: Dimensions
-gameDim = (10, 22)
-
-
-playGame :: (GameContext p a m) => Stream (NonEmpty (p a)) -> m Score
-playGame bags = liftM _score $ flip execStateT st $ unGameEngine runGame
+playGame :: (GameContext p u m) => GameConfig u -> Stream (p u) -> m Score
+playGame config pieces = liftM _score $ flip execStateT st $ unGameEngine runGame
     where
-        pieces = Stream.fromList $ concat $ map NonEmpty.toList $ Stream.toList bags
         st = GameState {
-            _field = newPlayfield,
+            _config = config,
+            _field = Field.mkPlayfield $ _playfieldDim config,
             _piece = error "_piece",
             _pieceIndex = error "_pieceIndex",
             _futurePieces = pieces,
@@ -155,7 +163,7 @@ tickGame = do
     performAction action
     tickGravity
     field <- gets _field
-    prompt $ BoardChanged field
+    prompt $ PlayfieldChanged field
 
 
 isGameOver :: (GameContext p u m) => GameEngine p u m Bool
@@ -164,6 +172,7 @@ isGameOver = gets _gameOver
 
 nextPiece :: (GameContext p u m) => GameEngine p u m ()
 nextPiece = do
+    dim <- gets $ _playfieldDim . _config
     pieces <- gets _futurePieces
     modify $ \st -> st {
         _piece = Stream.head pieces,
@@ -172,7 +181,7 @@ nextPiece = do
     p <- gets _piece
     let grid = getGrid p
         (pw, ph) = Grid.dimensions grid
-        (gw, gh) = gameDim
+        (gw, gh) = dim
         startIdx = ((gw - pw) `div` 2, 0)
     case Field.addPiece startIdx p field of
         Nothing -> gameOver
@@ -256,8 +265,9 @@ tryMoveBy fIndex = do
 
 getRows :: (GameContext p u m) => GameEngine p u m [[Cell u]]
 getRows = do
+    dim <- gets $ _playfieldDim . _config
     field <- gets _field
-    let (_, h) = gameDim
+    let (_, h) = dim
         idxs = [0 .. h - 1]
         rows = map (`Field.getRow` field) idxs
     return rows
@@ -288,7 +298,7 @@ clearRows idxs = do
     updateScore $ NonEmpty.length idxs
     gets _rowsCleared >>= prompt . RowsCleared idxs
     gets _score >>= prompt . ScoreChanged
-    gets _field >>= prompt . BoardChanged
+    gets _field >>= prompt . PlayfieldChanged
 
 
 clearRow :: (GameContext p u m) => Int -> GameEngine p u m ()
