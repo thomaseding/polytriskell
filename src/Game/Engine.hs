@@ -21,6 +21,7 @@ module Game.Engine (
 ) where
 
 
+import Control.Monad.Loops (whileM_)
 import Control.Monad.Prompt
 import Control.Monad.State.Lazy
 import Data.Cell
@@ -96,6 +97,7 @@ data GameState p u = GameState {
     _field :: Playfield u,
     _piece :: p u,
     _pieceIndex :: Index,
+    _ghostPieceIndex :: Maybe Index,
     _futurePieces :: Stream (p u),
     _rowsCleared :: TotalRowCount,
     _level :: Level,
@@ -132,6 +134,7 @@ playGame config pieces = liftM _score $ flip execStateT st $ unGameEngine runGam
             _field = Field.mkPlayfield $ _playfieldDim config,
             _piece = error "_piece",
             _pieceIndex = error "_pieceIndex",
+            _ghostPieceIndex = Nothing,
             _futurePieces = pieces,
             _level = 1,
             _rowsCleared = 0,
@@ -172,6 +175,7 @@ isGameOver = gets _gameOver
 
 nextPiece :: (GameContext p u m) => GameEngine p u m ()
 nextPiece = do
+    removeGhostPiece
     dim <- gets $ _playfieldDim . _config
     pieces <- gets _futurePieces
     modify $ \st -> st {
@@ -185,9 +189,12 @@ nextPiece = do
         startIdx = ((gw - pw) `div` 2, 0)
     case Field.addPiece startIdx p field of
         Nothing -> gameOver
-        Just field' -> modify $ \st -> st {
-            _pieceIndex = startIdx,
-            _field = field' }
+        Just field' -> do
+            modify $ \st -> st {
+                _pieceIndex = startIdx,
+                _field = field' }
+            _ <- tryMoveBy id -- to trigger ghost piece
+            return ()
 
 
 
@@ -226,6 +233,7 @@ lockPiece = do
 
 tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m ()
 tryRotate dir = do
+    removeGhostPiece
     p <- gets _piece
     let p' = rotate dir p
     idx <- gets _pieceIndex
@@ -235,6 +243,7 @@ tryRotate dir = do
         Just field' -> modify $ \st -> st {
             _piece = p',
             _field = field' }
+    addGhostPiece
 
 
 moveIndex :: MoveDir -> Index -> Index
@@ -250,17 +259,57 @@ tryMove _ = tryMoveBy . moveIndex
 
 tryMoveBy :: (GameContext p u m) => (Index -> Index) -> GameEngine p u m Bool
 tryMoveBy fIndex = do
+    removeGhostPiece
     p <- gets _piece
     idx <- gets _pieceIndex
     let idx' = fIndex idx
     field <- gets $ Field.removePiece idx p . _field
-    case Field.addPiece idx' p field of
+    moved <- case Field.addPiece idx' p field of
         Nothing -> return False
         Just field' -> do
             modify $ \st -> st {
                 _pieceIndex = idx',
                 _field = field' }
             return True
+    addGhostPiece
+    return moved
+
+
+addGhostPiece :: (GameContext p u m) => GameEngine p u m ()
+addGhostPiece = gets (_ghostFunc . _config) >>= \case
+    Nothing -> return ()
+    Just f -> do
+        st <- get
+        modify $ \st -> let
+            config = _config st
+            config' = config { _ghostFunc = Nothing }
+            in st {
+                _config = config',
+                _piece = fmap f $ _piece st }
+        whileM_ (tryMove Init Down) $ return ()
+        ghostIdx <- gets _pieceIndex
+        ghost <- gets _piece
+        put st
+        field <- gets _field
+        case Field.addPiece ghostIdx ghost field of
+            Nothing -> return ()
+            Just field' -> modify $ \st -> st {
+                _ghostPieceIndex = Just ghostIdx,
+                _field = field' }
+
+
+removeGhostPiece :: (GameContext p u m) => GameEngine p u m ()
+removeGhostPiece = gets (_ghostFunc . _config) >>= \case
+    Nothing -> return ()
+    Just f -> gets _ghostPieceIndex >>= \case
+        Nothing -> return ()
+        Just ghostIdx -> modify $ \st -> let
+            piece = _piece st
+            field = _field st
+            field' = Field.removePiece ghostIdx piece field
+            in st {
+                _ghostPieceIndex = Nothing,
+                _field = field' }
 
 
 getRows :: (GameContext p u m) => GameEngine p u m [[Cell u]]
@@ -276,9 +325,8 @@ getRows = do
 isFull :: [Cell a] -> Bool
 isFull = and . map f
     where
-        f = \case
-            Empty -> False
-            _ -> True
+        f Empty = False
+        f _ = True
 
 
 tryClearRows :: (GameContext p u m) => GameEngine p u m ()
