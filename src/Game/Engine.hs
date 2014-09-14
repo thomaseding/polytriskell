@@ -184,7 +184,7 @@ lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
     f <- prompt PieceLocked
     modify $ \st -> st { _piece = fmap f $ _piece st }
-    tryMoveM Init Nothing
+    tryMoveBy id
     nextPiece
 
 
@@ -201,24 +201,22 @@ tryRotate dir = do
             _field = field' }
 
 
-moveIndex :: Maybe MoveDir -> Index -> Index
-moveIndex mDir (x, y) = case mDir of
-    Nothing -> (x, y)
-    Just dir -> case dir of
-        Left -> (x - 1, y)
-        Right -> (x + 1, y)
-        Down -> (x, y + 1)
+moveIndex :: MoveDir -> Index -> Index
+moveIndex dir (x, y) = case dir of
+    Left -> (x - 1, y)
+    Right -> (x + 1, y)
+    Down -> (x, y + 1)
 
 
 tryMove :: (GameContext p u m) => Rhythm -> MoveDir -> GameEngine p u m Bool
-tryMove rhythm = tryMoveM rhythm . Just
+tryMove _ = tryMoveBy . moveIndex
 
 
-tryMoveM :: (GameContext p u m) => Rhythm -> Maybe MoveDir -> GameEngine p u m Bool
-tryMoveM _ mDir = do
+tryMoveBy :: (GameContext p u m) => (Index -> Index) -> GameEngine p u m Bool
+tryMoveBy fIndex = do
     p <- gets _piece
     idx <- gets _pieceIndex
-    let idx' = moveIndex mDir idx
+    let idx' = fIndex idx
     field <- gets $ removePiece idx p . _field
     case addPiece idx' p field of
         Nothing -> return False
