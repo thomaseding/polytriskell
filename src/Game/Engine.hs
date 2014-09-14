@@ -14,6 +14,7 @@ module Game.Engine (
     Action(..),
     GameMonad,
     Score,
+    Level,
     playGame,
 ) where
 
@@ -37,12 +38,16 @@ import Prelude hiding (Left, Right, foldr)
 
 
 type LockAction u = u -> u
+type RowCount = Int
+type TotalRowCount = RowCount
 
 
 data GamePrompt :: * -> * -> * where
     GetAction :: GamePrompt u Action
+    ScoreChanged :: Score -> GamePrompt u ()
+    LevelChanged :: Level -> GamePrompt u ()
     BoardChanged :: Playfield u -> GamePrompt u ()
-    RowsCleared :: NonEmpty Int -> GamePrompt u ()
+    RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
     PieceLocked :: GamePrompt u (LockAction u)
 
 
@@ -62,8 +67,20 @@ data Action
     deriving (Show, Eq, Ord)
 
 
+newtype Level = Level { unLevel :: Int }
+    deriving (Eq, Ord, Num)
+
+
+instance Show Level where
+    show = show . unLevel
+
+
 newtype Score = Score { unScore :: Int }
-    deriving (Show, Eq, Ord, Num)
+    deriving (Eq, Ord, Num)
+
+
+instance Show Score where
+    show = show . unScore
 
 
 data GameState p u = GameState {
@@ -71,6 +88,8 @@ data GameState p u = GameState {
     _piece :: p u,
     _pieceIndex :: Index,
     _futurePieces :: Stream (p u),
+    _rowsCleared :: TotalRowCount,
+    _level :: Level,
     _score :: Score,
     _gameOver :: Bool
 }
@@ -106,6 +125,8 @@ playGame bags = liftM _score $ flip execStateT st $ unGameEngine runGame
             _piece = error "_piece",
             _pieceIndex = error "_pieceIndex",
             _futurePieces = pieces,
+            _level = 1,
+            _rowsCleared = 0,
             _score = 0,
             _gameOver = False }
 
@@ -263,20 +284,43 @@ tryClearRows = do
 
 clearRows :: (GameContext p u m) => NonEmpty Int -> GameEngine p u m ()
 clearRows idxs = do
-    prompt $ RowsCleared idxs
     mapM clearRow $ NonEmpty.toList idxs
-    field <- gets _field
-    prompt $ BoardChanged field
+    updateScore $ NonEmpty.length idxs
+    gets _rowsCleared >>= prompt . RowsCleared idxs
+    gets _score >>= prompt . ScoreChanged
+    gets _field >>= prompt . BoardChanged
 
 
 clearRow :: (GameContext p u m) => Int -> GameEngine p u m ()
 clearRow idx = do
     field <- gets $ Field.clearRow idx . _field
+    rowsCleared <- gets _rowsCleared
     let field' = Field.dropRowsAbove idx field
-    modify $ \st -> st { _field = field' }
+        rowsCleared' = rowsCleared + 1
+        level = Level $ (rowsCleared' `div` 10) + 1
+    modify $ \st -> st {
+        _level = level,
+        _rowsCleared = rowsCleared',
+        _field = field' }
 
 
+updateScore :: (GameContext p u m) => RowCount -> GameEngine p u m ()
+updateScore numRowsCleared = do
+    level <- gets _level
+    score <- gets _score
+    let points = calculatePoints level numRowsCleared
+        score' = score + points
+    modify $ \st -> st { _score = score' }
+    prompt $ ScoreChanged score'
 
+
+calculatePoints :: Level -> RowCount -> Score
+calculatePoints level = Score . (unLevel level *) . \case
+    1 -> 100
+    2 -> 300
+    3 -> 500
+    4 -> 800
+    n -> error $ "Don't know how to score " ++ show n ++ " rows cleared."
 
 
 

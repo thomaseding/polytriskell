@@ -68,17 +68,75 @@ pieces = [
             in mkTetromino block
 
 
+titleRow :: Int
+titleRow = 0
+
+
+levelRow :: Int
+levelRow = 1
+
+
+scoreRow :: Int
+scoreRow = 2
+
+
+rowsClearedRow :: Int
+rowsClearedRow = 3
+
+
+boardRow :: Int
+boardRow = 4
+
+
 main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
     gen <- getStdGen
     let bags = shuffleAll pss gen
     let bags' = Stream.fromList $ map NonEmpty.fromList bags
+    initScreen
     score <- runConsole $ playGame bags'
     print score
     where
         ps = pieces
         pss = repeat ps
+
+
+initScreen :: (MonadIO m) => m ()
+initScreen = do
+    liftIO clearScreen
+    drawTitle
+    drawLevel 1
+    drawScore 0
+    drawRowsCleared 0
+
+
+drawTitle :: (MonadIO m) => m ()
+drawTitle = liftIO $ do
+    setCursorPosition titleRow 0
+    clearLine
+    putStrLn "Polytriskell"
+
+
+drawLevel :: (MonadIO m) => Level -> m ()
+drawLevel level = liftIO $ do
+    setCursorPosition levelRow 0
+    clearLine
+    putStrLn $ "Level " ++ show level
+
+
+drawScore :: (MonadIO m) => Score -> m ()
+drawScore score = liftIO $ do
+    setCursorPosition scoreRow 0
+    clearLine
+    putStrLn $ "Score " ++ show score
+
+
+drawRowsCleared :: (MonadIO m) => Int -> m ()
+drawRowsCleared n = liftIO $ do
+    setCursorPosition rowsClearedRow 0
+    clearLine
+    putStrLn $ "Rows Cleared " ++ show n
 
 
 newtype Console a = Console { runConsole :: IO a }
@@ -88,13 +146,16 @@ newtype Console a = Console { runConsole :: IO a }
 instance MonadPrompt (GamePrompt U) Console where
     prompt = \case
         BoardChanged field -> drawBoard field
-        RowsCleared rows -> rowsCleared rows
+        RowsCleared rows totalCleared -> rowsCleared rows totalCleared
         GetAction -> getAction
         PieceLocked -> lockAction
+        ScoreChanged s -> drawScore s
+        LevelChanged l -> drawLevel l
 
 
-rowsCleared :: NonEmpty Int -> Console ()
-rowsCleared _ = return ()
+rowsCleared :: NonEmpty Int -> Int -> Console ()
+rowsCleared _ totalCleared = do
+    drawRowsCleared totalCleared
 
 
 lockAction :: Console (LockAction U)
@@ -131,8 +192,8 @@ cellToChar = \case
 
 drawBoard :: Playfield U -> Console ()
 drawBoard field = liftIO $ do
-    clearScreen
-    setCursorPosition 0 0
+    setCursorPosition boardRow 0
+    clearFromCursorToScreenEnd
     setSGR [Reset]
     putStrLn2 $ replicate (w + 2) borderChar
     forM_ rows $ \row -> do
