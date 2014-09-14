@@ -299,6 +299,7 @@ clearRows idxs = do
     gets _rowsCleared >>= prompt . RowsCleared idxs
     gets _score >>= prompt . ScoreChanged
     gets _field >>= prompt . PlayfieldChanged
+    updateLevel
 
 
 clearRow :: (GameContext p u m) => Int -> GameEngine p u m ()
@@ -307,9 +308,7 @@ clearRow idx = do
     rowsCleared <- gets _rowsCleared
     let field' = Field.dropRowsAbove idx field
         rowsCleared' = rowsCleared + 1
-        level = Level $ (rowsCleared' `div` 10) + 1
     modify $ \st -> st {
-        _level = level,
         _rowsCleared = rowsCleared',
         _field = field' }
 
@@ -322,6 +321,18 @@ updateScore numRowsCleared = do
         score' = score + points
     modify $ \st -> st { _score = score' }
     prompt $ ScoreChanged score'
+
+
+updateLevel :: (GameContext p u m) => GameEngine p u m ()
+updateLevel = do
+    rowsCleared <- gets _rowsCleared
+    level <- gets _level
+    let level' = Level $ (rowsCleared `div` 10) + 1
+    case level == level' of
+        True -> return ()
+        False -> do
+            modify $ \st -> st { _level = level }
+            prompt $ LevelChanged level'
 
 
 calculatePoints :: Level -> RowCount -> Score
