@@ -206,7 +206,7 @@ nextPiece = do
             modify $ \st -> st {
                 _pieceIndex = startIdx,
                 _field = field' }
-            _ <- tryMoveBy id -- to trigger ghost piece
+            addGhostPiece
             return ()
 
 
