@@ -207,8 +207,6 @@ nextPiece = do
                 _pieceIndex = startIdx,
                 _field = field' }
             addGhostPiece
-            return ()
-
 
 
 performAction :: (GameContext p u m) => Action -> GameEngine p u m ()
