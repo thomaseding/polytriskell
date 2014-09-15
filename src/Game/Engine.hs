@@ -25,7 +25,6 @@ import Control.Monad.Loops (whileM_)
 import Control.Monad.Prompt
 import Control.Monad.State.Lazy
 import Data.Cell
-import Data.Foldable (foldr)
 import Data.Grid (Index, Dimensions)
 import qualified Data.Grid as Grid
 import Data.List.NonEmpty (NonEmpty)
@@ -197,8 +196,8 @@ nextPiece = do
     field <- gets _field
     p <- gets _piece
     let grid = getGrid p
-        (pw, ph) = Grid.dimensions grid
-        (gw, gh) = dim
+        (pw, _) = Grid.dimensions grid
+        (gw, _) = dim
         startIdx = ((gw - pw) `div` 2, 0)
     case Field.addPiece startIdx p field of
         Nothing -> gameOver
@@ -237,7 +236,7 @@ lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
     f <- prompt PieceLocked
     modify $ \st -> st { _piece = fmap f $ _piece st }
-    tryMoveBy id
+    _ <- tryMoveBy id -- To prompt BoardChanged with locked piece user data.
     tryClearRows
     nextPiece
 
@@ -370,7 +369,7 @@ tryClearRows = do
 
 clearRows :: (GameContext p u m) => NonEmpty Int -> GameEngine p u m ()
 clearRows idxs = do
-    mapM clearRow $ NonEmpty.toList idxs
+    mapM_ clearRow $ NonEmpty.toList idxs
     updateScore $ NonEmpty.length idxs
     gets _rowsCleared >>= prompt . RowsCleared idxs
     gets _score >>= prompt . ScoreChanged

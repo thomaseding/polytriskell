@@ -17,8 +17,6 @@ import Data.Cell (Cell(..))
 import Data.Grid (Dimensions, Index, Grid)
 import qualified Data.Grid as Grid
 import Data.Function.Pointless ((.:))
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Game.Piece (Piece(..))
 import Prelude hiding (pred)
 
@@ -29,10 +27,6 @@ type CellGrid a = Grid (Cell a)
 -- Coord info: (0, 0) is the top left corner of the playfield
 newtype Playfield a = Playfield { unPlayfield :: CellGrid a }
     deriving (Functor)
-
-
-lift :: (CellGrid a -> CellGrid a) -> (Playfield a -> Playfield a)
-lift f = Playfield . f . unPlayfield
 
 
 mkPlayfield :: Dimensions -> Playfield a
@@ -76,7 +70,6 @@ mergeGrid pred mask offset grid field = case allowChange of
     False -> Nothing
     True -> Just $ Playfield fieldGrid'
     where
-        dim = Grid.dimensions grid
         fieldGrid = unPlayfield field
         allowChange = Grid.canOverlay pred offset grid fieldGrid
         fieldGrid' = Grid.overlayBy1 mask offset grid fieldGrid
@@ -96,7 +89,7 @@ putRow :: Int -> [Cell a] -> Playfield a -> Playfield a
 putRow row cells field = Playfield $ foldr f grid $ zip cells' $ rowIndices row grid
     where
         grid = unPlayfield field
-        (w, h) = Grid.dimensions grid
+        (w, _) = Grid.dimensions grid
         cells' = take w cells
         f (cell, idx) = Grid.put cell idx
 

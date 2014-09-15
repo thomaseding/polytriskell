@@ -16,7 +16,6 @@ module Data.Grid (
 
 
 import Data.List (transpose)
-import Data.Maybe (fromJust)
 import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
 import qualified Math.Geometry.Grid as G
 import qualified Math.Geometry.GridMap as GM
@@ -29,7 +28,10 @@ type Dimensions = (Int, Int)
 type GMap a = LGridMap RectSquareGrid a
 
 
-data Grid a = Grid Dimensions (GMap a)
+data Grid a = Grid {
+    _dim :: Dimensions,
+    _gridMap :: GMap a
+}
 
 
 instance Functor Grid where
@@ -37,7 +39,7 @@ instance Functor Grid where
 
 
 instance (Show a) => Show (Grid a) where
-    show (Grid dim gm) = show $ GM.toMap gm
+    show = show . GM.toMap . _gridMap
 
 
 lift :: (GMap a -> GMap b) -> (Grid a -> Grid b)
@@ -45,7 +47,7 @@ lift f (Grid dim gm) = Grid dim $ f gm
 
 
 getMap :: Grid a -> GMap a
-getMap (Grid _ gm) = gm
+getMap = _gridMap
 
 
 mkGrid :: Dimensions -> a -> Grid a
@@ -75,7 +77,7 @@ fromLists xss = case isRect of
 
 
 dimensions :: Grid a -> Dimensions
-dimensions (Grid dim _) = dim
+dimensions = _dim
 
 
 inDim :: Index -> Dimensions -> Bool

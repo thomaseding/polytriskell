@@ -52,10 +52,6 @@ instance Piece Tetromino a where
     overlayBy2 = overlayBy2'
 
 
-getGrid' :: Tetromino a -> CellGrid a
-getGrid' (Tetromino _ gs) = Stream.head gs
-
-
 overlayBy2' :: (a -> b -> Cell b) -> Index -> CellGrid a -> Tetromino b -> Tetromino b
 overlayBy2' f offset grid piece = Tetromino kind rots'
     where

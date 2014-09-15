@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module UI.Console (
+    main,
 ) where
 
 
@@ -14,7 +15,6 @@ import Control.Monad.Trans
 import Data.Cell
 import Data.Char
 import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty
 import Data.Rotate
 import qualified Data.Stream as Stream
 import Game.Engine
@@ -50,8 +50,8 @@ data Block = Block {
 type U = Block
 
 
-pieces :: [Tetromino U]
-pieces = [
+basicPieces :: [Tetromino U]
+basicPieces = [
     mk Cyan I,
     mk Blue J,
     mk White L,
@@ -102,13 +102,12 @@ main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
     gen <- getStdGen
-    let ps = Stream.fromList $ concat $ shuffleAll pss gen
+    let ps = Stream.fromList $ concat $ shuffleAll basicBags gen
     initScreen
     _ <- runConsole $ playGame gameConfig ps
     return ()
     where
-        ps = pieces
-        pss = repeat ps
+        basicBags = repeat basicPieces
 
 
 initScreen :: (MonadIO m) => m ()
@@ -182,12 +181,14 @@ data Key
 
 getKey :: IO Key
 getKey = getChar >>= \case
-    '\ESC' -> fmap esc $ timeout 100 $ getChar >>= \case
+    '\ESC' -> fmap (esc . join) $ timeout 100 $ getChar >>= \case
         '[' -> getChar >>= \case
-            'A' -> return UpKey
-            'B' -> return DownKey
-            'C' -> return RightKey
-            'D' -> return LeftKey
+            'A' -> return $ Just UpKey
+            'B' -> return $ Just DownKey
+            'C' -> return $ Just RightKey
+            'D' -> return $ Just LeftKey
+            _ -> return Nothing
+        _ -> return Nothing
     c -> return $ CharKey c
     where
         esc = \case
@@ -207,10 +208,6 @@ getAction = liftIO $ do
                 '\ESC' -> QuitGame
                 _ -> DoNothing
             _ -> DoNothing
-    where
-        clearChars c = do
-            _ <- timeout 100 $ replicateM_ 10000 getChar
-            return c
 
 
 type ColoredChar = (Char, Color, ColorIntensity)
