@@ -335,7 +335,7 @@ getCroppedGhost f = do
     pieceIndex <- gets _pieceIndex
     piece <- gets _piece
     (ghost, ghostIndex) <- getGhost f
-    let offset = subtractIndex ghostIndex pieceIndex
+    let offset = subtractIndex pieceIndex ghostIndex
         pieceGrid = getGrid piece
         ghost' = overlayBy2 g offset pieceGrid ghost
         g _ _ = Empty
