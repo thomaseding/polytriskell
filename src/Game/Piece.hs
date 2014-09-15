@@ -6,14 +6,16 @@ module Game.Piece (
 
 
 import Data.Cell (Cell)
-import Data.Grid (Grid)
+import Data.Grid (Grid, Index)
 import Data.Rotate (Rotatable)
 
 
+type CellGrid a = Grid (Cell a)
+
+
 class Rotatable (p a) => Piece p a where
-    getGrid :: p a -> Grid (Cell a)
-
-
+    getGrid :: p a -> CellGrid a
+    overlayBy2 :: (Piece p a, Piece p b) => (a -> b -> Cell b) -> Index -> CellGrid a -> p b -> p b
 
 
 

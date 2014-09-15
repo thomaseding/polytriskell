@@ -40,6 +40,18 @@ import qualified Game.Playfield as Field
 import Prelude hiding (Left, Right, foldr)
 
 
+branch :: (MonadState s m) => (s -> s) -> m a -> m a
+branch f action = do
+    snapshot <- get
+    result <- action
+    put $ f snapshot
+    return result
+
+
+subtractIndex :: Index -> Index -> Index
+subtractIndex (x, y) (x', y') = (x - x', y - y')
+
+
 type LockAction u = u -> u
 type RowCount = Int
 type TotalRowCount = RowCount
@@ -132,8 +144,8 @@ playGame config pieces = liftM _score $ flip execStateT st $ unGameEngine runGam
         st = GameState {
             _config = config,
             _field = Field.mkPlayfield $ _playfieldDim config,
-            _piece = error "_piece",
-            _pieceIndex = error "_pieceIndex",
+            _piece = Stream.head pieces,
+            _pieceIndex = (0, 0),
             _ghostPieceIndex = Nothing,
             _futurePieces = pieces,
             _level = 1,
@@ -149,7 +161,8 @@ runGame = do
 
 
 initGame :: (GameContext p u m) => GameEngine p u m ()
-initGame = nextPiece
+initGame = do
+    nextPiece
 
 
 gameLoop :: (GameContext p u m) => GameEngine p u m ()
@@ -279,37 +292,54 @@ addGhostPiece :: (GameContext p u m) => GameEngine p u m ()
 addGhostPiece = gets (_ghostFunc . _config) >>= \case
     Nothing -> return ()
     Just f -> do
-        st <- get
-        modify $ \st -> let
-            config = _config st
-            config' = config { _ghostFunc = Nothing }
-            in st {
-                _config = config',
-                _piece = fmap f $ _piece st }
-        whileM_ (tryMove Init Down) $ return ()
-        ghostIdx <- gets _pieceIndex
-        ghost <- gets _piece
-        put st
+        (ghost, ghostIndex) <- getCroppedGhost f
         field <- gets _field
-        case Field.addPiece ghostIdx ghost field of
+        case Field.addPiece ghostIndex ghost field of
             Nothing -> return ()
             Just field' -> modify $ \st -> st {
-                _ghostPieceIndex = Just ghostIdx,
+                _ghostPieceIndex = Just ghostIndex,
                 _field = field' }
 
 
 removeGhostPiece :: (GameContext p u m) => GameEngine p u m ()
 removeGhostPiece = gets (_ghostFunc . _config) >>= \case
     Nothing -> return ()
-    Just f -> gets _ghostPieceIndex >>= \case
-        Nothing -> return ()
-        Just ghostIdx -> modify $ \st -> let
-            piece = _piece st
-            field = _field st
-            field' = Field.removePiece ghostIdx piece field
-            in st {
-                _ghostPieceIndex = Nothing,
-                _field = field' }
+    Just f -> do
+        (ghost, ghostIndex) <- getCroppedGhost f
+        field <- gets _field
+        let field' = Field.removePiece ghostIndex ghost field
+        modify $ \st -> st {
+            _ghostPieceIndex = Nothing,
+            _field = field' }
+
+
+getGhost :: (GameContext p u m) => (u -> u) -> GameEngine p u m (p u, Index)
+getGhost f = branch id $ do
+    modify $ \st -> let
+        config = _config st
+        config' = config { _ghostFunc = Nothing }
+        in st {
+            _config = config',
+            _piece = fmap f $ _piece st }
+    ghostIdx <- gets _ghostPieceIndex >>= \case
+        Just i -> return i
+        Nothing -> do
+            whileM_ (tryMove Init Down) $ return ()
+            gets _pieceIndex
+    ghost <- gets _piece
+    return (ghost, ghostIdx)
+
+
+getCroppedGhost :: (GameContext p u m) => (u -> u) -> GameEngine p u m (p u, Index)
+getCroppedGhost f = do
+    pieceIndex <- gets _pieceIndex
+    piece <- gets _piece
+    (ghost, ghostIndex) <- getGhost f
+    let offset = subtractIndex ghostIndex pieceIndex
+        pieceGrid = getGrid piece
+        ghost' = overlayBy2 g offset pieceGrid ghost
+        g _ _ = Empty
+    return (ghost', ghostIndex)
 
 
 getRows :: (GameContext p u m) => GameEngine p u m [[Cell u]]

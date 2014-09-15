@@ -42,11 +42,9 @@ mkPlayfield dim = Playfield $ Grid.mkGrid dim Empty
 addPiece :: (Piece p a) => Index -> p a -> Playfield a -> Maybe (Playfield a)
 addPiece = withPiece (not .: colliding) add
     where
-        colliding (Occupied _) = \case
-            Nothing -> True
-            Just (Occupied _) -> True
-            _ -> False
-        colliding _ = const False
+        colliding (Occupied _) Nothing = True
+        colliding (Occupied _) (Just (Occupied _)) = True
+        colliding _ _ = False
         --
         add Empty = Nothing
         add occupied = Just occupied

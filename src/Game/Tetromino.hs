@@ -11,7 +11,8 @@ module Game.Tetromino (
 
 
 import Data.Cell (Cell(..))
-import Data.Grid (Grid, fromLists)
+import Data.Grid (Grid, Index)
+import qualified Data.Grid as Grid
 import Data.List (transpose)
 import Data.Rotate (Rotatable(..), RotateDir(..))
 import Data.Stream (Stream)
@@ -27,7 +28,10 @@ type CellGrid a = Grid (Cell a)
 type Rotations a = Stream (CellGrid a)
 
 
-data Tetromino a = Tetromino TetrominoKind (Rotations a)
+data Tetromino a = Tetromino {
+    _kind :: TetrominoKind,
+    _rotations :: Rotations a
+}
 
 
 instance Functor Tetromino where
@@ -44,7 +48,24 @@ instance Rotatable (Tetromino a) where
 
 
 instance Piece Tetromino a where
-    getGrid (Tetromino _ gs) = Stream.head gs
+    getGrid = Stream.head . _rotations
+    overlayBy2 = overlayBy2'
+
+
+getGrid' :: Tetromino a -> CellGrid a
+getGrid' (Tetromino _ gs) = Stream.head gs
+
+
+overlayBy2' :: (a -> b -> Cell b) -> Index -> CellGrid a -> Tetromino b -> Tetromino b
+overlayBy2' f offset grid piece = Tetromino kind rots'
+    where
+        kind = _kind piece
+        rots = _rotations piece
+        rots' = Stream.map overlay rots
+        overlay = Grid.overlayBy2 g offset grid
+        --
+        g (Occupied x) (Occupied y) = f x y
+        g _ cy = cy
 
 
 mkTetromino :: a -> TetrominoKind -> Tetromino a
@@ -83,7 +104,7 @@ mkTetromino' :: TetrominoKind -> [[Char]] -> Tetromino ()
 mkTetromino' k = Tetromino k . genRotations . toGridSpec
     where
         rotateCW = map reverse . transpose
-        genRotations = Stream.cycle . map fromLists . take 4 . iterate rotateCW
+        genRotations = Stream.cycle . map Grid.fromLists . take 4 . iterate rotateCW
 
 
 tetrominoI :: Tetromino ()

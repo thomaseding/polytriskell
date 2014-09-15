@@ -124,18 +124,21 @@ subGrid offset subDim grid = fromList subDim subVals
 
 
 overlayBy1 :: (a -> Maybe b) -> Index -> Grid a -> Grid b -> Grid b
-overlayBy1 f = overlayBy2 $ \x _ -> f x
+overlayBy1 f = overlayBy2 $ \x y -> case f x of
+    Nothing -> y
+    Just y' -> y'
 
 
-overlayBy2 :: (a -> b -> Maybe b) -> Index -> Grid a -> Grid b -> Grid b
+overlayBy2 :: (a -> b -> b) -> Index -> Grid a -> Grid b -> Grid b
 overlayBy2 f offset gridA gridB = foldr g gridB $ GM.toList $ getMap gridA
     where
         g (idx, x) grid = let
             idx' = addIndices offset idx
-            y = get idx' gridB
-            in case f x y of
+            in case lookup idx' gridB of
                 Nothing -> grid
-                Just y' -> put y' idx' grid
+                Just y -> let
+                    y' = f x y
+                    in put y' idx' grid
 
 
 canOverlay :: (a -> Maybe b -> Bool) -> Index -> Grid a -> Grid b -> Bool
@@ -145,8 +148,9 @@ canOverlay pred offset gridA gridB = foldr f True $ GM.toList $ getMap gridA
             False -> False
             True -> let
                 idx' = addIndices offset idx
-                my = lookup idx' gridB
-                in pred x my
+                in case lookup idx' gridB of
+                    Nothing -> pred x Nothing
+                    Just y -> pred x $ Just y
 
 
 
