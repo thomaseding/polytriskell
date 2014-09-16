@@ -15,6 +15,7 @@ import Data.Grid (Grid, Index)
 import qualified Data.Grid as Grid
 import Data.List (transpose)
 import Data.Rotate (Rotatable(..), RotateDir(..))
+import qualified Data.Rotate as Rotate
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import Game.Piece (Piece(..))
@@ -47,8 +48,9 @@ instance Rotatable (Tetromino a) where
             CounterClockwise -> Stream.drop 3 gs
 
 
-instance Piece Tetromino a where
+instance Piece Tetromino where
     getGrid = Stream.head . _rotations
+    rotate = Rotate.rotate
     overlayBy2 = overlayBy2'
 
 

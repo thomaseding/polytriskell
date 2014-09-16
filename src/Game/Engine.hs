@@ -30,10 +30,11 @@ import qualified Data.Grid as Grid
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (mapMaybe)
-import Data.Rotate
+import Data.Rotate (RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
-import Game.Piece
+import Game.Piece (Piece)
+import qualified Game.Piece as Piece
 import Game.Playfield (Playfield)
 import qualified Game.Playfield as Field
 import Prelude hiding (Left, Right, foldr)
@@ -146,14 +147,12 @@ newtype GameEngine p u m a = GameEngine {
 } deriving (Monad, MonadState (GameState p u), MonadTrans)
 
 
-type GameMonad u a = MonadPrompt (GamePrompt u) a
-type GameContext p u m = (GameMonad u m, Piece p u, Functor p)
+type GameMonad u m = (MonadPrompt (GamePrompt u) m)
+type GameContext p u m = (GameMonad u m, Piece p, Functor p)
 
 
 instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
     prompt = lift . prompt
-
-
 
 
 playGame :: (GameContext p u m) => GameConfig u -> Stream (p u) -> m Score
@@ -204,7 +203,7 @@ nextPiece = do
         _futurePieces = Stream.tail pieces }
     field <- gets _field
     p <- gets _piece
-    let grid = getGrid p
+    let grid = Piece.getGrid p
         (pw, _) = Grid.dimensions grid
         (gw, _) = dim
         startIdx = ((gw - pw) `div` 2, 0)
@@ -254,7 +253,7 @@ tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m ()
 tryRotate dir = do
     removeGhostPiece
     p <- gets _piece
-    let p' = rotate dir p
+    let p' = Piece.rotate dir p
     idx <- gets _pieceIndex
     field <- gets $ Field.removePiece idx p . _field
     case Field.addPiece idx p' field of
@@ -342,8 +341,8 @@ getCroppedGhost f = do
     piece <- gets _piece
     (ghost, ghostIndex) <- getGhost f
     let offset = subtractIndex pieceIndex ghostIndex
-        pieceGrid = getGrid piece
-        ghost' = overlayBy2 g offset pieceGrid ghost
+        pieceGrid = Piece.getGrid piece
+        ghost' = Piece.overlayBy2 g offset pieceGrid ghost
         g _ _ = Empty
     return (ghost', ghostIndex)
 

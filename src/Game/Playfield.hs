@@ -33,7 +33,7 @@ mkPlayfield :: Dimensions -> Playfield a
 mkPlayfield dim = Playfield $ Grid.mkGrid dim Empty
 
 
-addPiece :: (Piece p a) => Index -> p a -> Playfield a -> Maybe (Playfield a)
+addPiece :: (Piece p) => Index -> p a -> Playfield a -> Maybe (Playfield a)
 addPiece = withPiece (not .: colliding) add
     where
         colliding (Occupied _) Nothing = True
@@ -44,13 +44,13 @@ addPiece = withPiece (not .: colliding) add
         add occupied = Just occupied
 
 
-removePiece :: (Piece p a) => Index -> p a -> Playfield a -> Playfield a
+removePiece :: (Piece p) => Index -> p a -> Playfield a -> Playfield a
 removePiece idx t f = case removePiece' idx t f of
     Nothing -> error "Game.removePiece: Internal logic error."
     Just f' -> f'
 
 
-removePiece' :: (Piece p a) => Index -> p a -> Playfield a -> Maybe (Playfield a)
+removePiece' :: (Piece p) => Index -> p a -> Playfield a -> Maybe (Playfield a)
 removePiece' = withPiece always remove
     where
         always _ _ = True
@@ -59,7 +59,7 @@ removePiece' = withPiece always remove
         remove (Occupied _) = Just Empty
 
 
-withPiece :: (Piece p a) => (Cell a -> Maybe (Cell b) -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> p a -> Playfield b -> Maybe (Playfield b)
+withPiece :: (Piece p) => (Cell a -> Maybe (Cell b) -> Bool) -> (Cell a -> Maybe (Cell b)) -> Index -> p a -> Playfield b -> Maybe (Playfield b)
 withPiece pred mask offset tetromino = mergeGrid pred mask offset tetrominoGrid
     where
         tetrominoGrid = getGrid tetromino
