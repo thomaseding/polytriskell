@@ -40,11 +40,12 @@ import Prelude hiding (Left, Right, foldr)
 
 
 branch :: (MonadState s m) => (s -> s) -> m a -> m a
-branch f action = do
-    snapshot <- get
-    result <- action
-    put $ f snapshot
-    return result
+branch f m = do
+    st <- get
+    modify f
+    x <- m
+    put st
+    return x
 
 
 subtractIndex :: Index -> Index -> Index
