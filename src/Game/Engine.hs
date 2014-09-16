@@ -57,15 +57,6 @@ type RowCount = Int
 type TotalRowCount = RowCount
 
 
-data GamePrompt :: * -> * -> * where
-    GetAction :: GamePrompt u Action
-    ScoreChanged :: Score -> GamePrompt u ()
-    LevelChanged :: Level -> GamePrompt u ()
-    PlayfieldChanged :: Playfield u -> GamePrompt u ()
-    RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
-    PieceLocked :: GamePrompt u (LockAction u)
-
-
 data MoveDir = Left | Right | Down
     deriving (Show, Eq, Ord)
 
@@ -96,6 +87,14 @@ newtype Score = Score { unScore :: Int }
 
 instance Show Score where
     show = show . unScore
+
+
+data GamePrompt u :: * -> * where
+    GetAction :: GamePrompt u Action
+    ScoreChanged :: Score -> GamePrompt u ()
+    LevelChanged :: Level -> GamePrompt u ()
+    PlayfieldChanged :: Playfield u -> GamePrompt u ()
+    RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
 
 
 data GameConfig u = GameConfig {
