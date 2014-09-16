@@ -98,6 +98,15 @@ data GamePrompt u :: * -> * where
     RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
 
 
+defaultPrompt :: (Monad m) => GamePrompt u a -> GameEngine p u m a
+defaultPrompt = \case
+    GetAction {} -> return DoNothing
+    ScoreChanged {} -> return ()
+    LevelChanged {} -> return ()
+    PlayfieldChanged {} -> return ()
+    RowsCleared {} -> return ()
+
+
 data GameConfig u = GameConfig {
     _ghostify :: Maybe (u -> u),
     _lockAction :: (u -> u),
@@ -114,6 +123,7 @@ defaultGameConfig = GameConfig {
 
 
 data GameState p u = GameState {
+    _promptEnabled :: Bool,
     _config :: GameConfig u,
     _field :: Playfield u,
     _piece :: p u,
@@ -153,6 +163,9 @@ type GameContext p u m = (GameMonad u m, Piece p, Functor p)
 
 instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
     prompt = lift . prompt
+    --prompt p = gets _promptEnabled >>= \case
+        --False -> defaultPrompt p
+        --True -> lift $ prompt p
 
 
 playGame :: (GameContext p u m) => GameConfig u -> Stream (p u) -> m Score
