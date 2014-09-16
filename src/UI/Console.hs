@@ -88,13 +88,14 @@ boardRow :: Int
 boardRow = 4
 
 
-ghostFunc :: U -> U
-ghostFunc block = block { _char = chr 9617 }
+ghostify :: U -> U
+ghostify block = block { _char = chr 9617 }
 
 
 gameConfig :: GameConfig U
 gameConfig = defaultGameConfig {
-    _ghostFunc = Just ghostFunc
+    _lockAction = lockAction,
+    _ghostify = Just ghostify
 }
 
 
@@ -156,7 +157,6 @@ instance MonadPrompt (GamePrompt U) Console where
         PlayfieldChanged field -> drawBoard field
         RowsCleared rows totalCleared -> rowsCleared rows totalCleared
         GetAction -> getAction
-        PieceLocked -> lockAction
         ScoreChanged s -> drawScore s
         LevelChanged l -> drawLevel l
 
@@ -166,9 +166,8 @@ rowsCleared _ totalCleared = do
     drawRowsCleared totalCleared
 
 
-lockAction :: Console (LockAction U)
-lockAction = return $ \block -> block {
-    _intensity = Dull }
+lockAction :: LockAction U
+lockAction block = block { _intensity = Dull }
 
 
 data Key

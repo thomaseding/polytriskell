@@ -99,8 +99,17 @@ instance Show Score where
 
 
 data GameConfig u = GameConfig {
-    _ghostFunc :: Maybe (u -> u),
+    _ghostify :: Maybe (u -> u),
+    _lockAction :: (u -> u),
     _playfieldDim :: Dimensions
+}
+
+
+defaultGameConfig :: GameConfig u
+defaultGameConfig = GameConfig {
+    _ghostify = Nothing,
+    _lockAction = id,
+    _playfieldDim = (10, 22)
 }
 
 
@@ -118,6 +127,21 @@ data GameState p u = GameState {
 }
 
 
+mkGameState :: GameConfig u -> Stream (p u) -> GameState p u
+mkGameState config pieces = GameState {
+    _promptEnabled = True,
+    _config = config,
+    _field = Field.mkPlayfield $ _playfieldDim config,
+    _piece = Stream.head pieces,
+    _pieceIndex = (0, 0),
+    _ghostPieceIndex = Nothing,
+    _futurePieces = pieces,
+    _level = 1,
+    _rowsCleared = 0,
+    _score = 0,
+    _gameOver = False }
+
+
 newtype GameEngine p u m a = GameEngine {
     unGameEngine :: StateT (GameState p u) m a
 } deriving (Monad, MonadState (GameState p u), MonadTrans)
@@ -131,27 +155,12 @@ instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
     prompt = lift . prompt
 
 
-defaultGameConfig :: GameConfig u
-defaultGameConfig = GameConfig {
-    _ghostFunc = Nothing,
-    _playfieldDim = (10, 22)
-}
 
 
 playGame :: (GameContext p u m) => GameConfig u -> Stream (p u) -> m Score
 playGame config pieces = liftM _score $ flip execStateT st $ unGameEngine runGame
     where
-        st = GameState {
-            _config = config,
-            _field = Field.mkPlayfield $ _playfieldDim config,
-            _piece = Stream.head pieces,
-            _pieceIndex = (0, 0),
-            _ghostPieceIndex = Nothing,
-            _futurePieces = pieces,
-            _level = 1,
-            _rowsCleared = 0,
-            _score = 0,
-            _gameOver = False }
+        st = mkGameState config pieces
 
 
 runGame :: (GameContext p u m) => GameEngine p u m ()
@@ -235,7 +244,7 @@ tickGravity = tryMove Init Down >>= \case
 
 lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
-    f <- prompt PieceLocked
+    f <- gets $ _lockAction . _config
     modify $ \st -> st { _piece = fmap f $ _piece st }
     _ <- tryMoveBy id -- To prompt BoardChanged with locked piece user data.
     tryClearRows
@@ -287,7 +296,7 @@ tryMoveBy fIndex = do
 
 
 addGhostPiece :: (GameContext p u m) => GameEngine p u m ()
-addGhostPiece = gets (_ghostFunc . _config) >>= \case
+addGhostPiece = gets (_ghostify . _config) >>= \case
     Nothing -> return ()
     Just f -> do
         (ghost, ghostIndex) <- getCroppedGhost f
@@ -300,7 +309,7 @@ addGhostPiece = gets (_ghostFunc . _config) >>= \case
 
 
 removeGhostPiece :: (GameContext p u m) => GameEngine p u m ()
-removeGhostPiece = gets (_ghostFunc . _config) >>= \case
+removeGhostPiece = gets (_ghostify . _config) >>= \case
     Nothing -> return ()
     Just f -> do
         (ghost, ghostIndex) <- getCroppedGhost f
@@ -315,7 +324,7 @@ getGhost :: (GameContext p u m) => (u -> u) -> GameEngine p u m (p u, Index)
 getGhost f = branch id $ do
     modify $ \st -> let
         config = _config st
-        config' = config { _ghostFunc = Nothing }
+        config' = config { _ghostify = Nothing }
         in st {
             _config = config',
             _piece = fmap f $ _piece st }
