@@ -340,6 +340,7 @@ getGhost f = branch id $ do
         piece = _piece st
         ghost = fmap f piece
         in st {
+            _promptEnabled = False,
             _config = config',
             _piece = ghost }
     ghostIdx <- gets _ghostPieceIndex >>= \case
