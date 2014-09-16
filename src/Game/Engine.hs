@@ -162,10 +162,9 @@ type GameContext p u m = (GameMonad u m, Piece p, Functor p)
 
 
 instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
-    prompt = lift . prompt
-    --prompt p = gets _promptEnabled >>= \case
-        --False -> defaultPrompt p
-        --True -> lift $ prompt p
+    prompt p = gets _promptEnabled >>= \case
+        False -> defaultPrompt p
+        True -> lift $ prompt p
 
 
 playGame :: (GameContext p u m) => GameConfig u -> Stream (p u) -> m Score
