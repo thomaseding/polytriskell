@@ -244,7 +244,8 @@ lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
     f <- gets $ _lockAction . _config
     modify $ \st -> st { _piece = fmap f $ _piece st }
-    _ <- tryMoveBy id -- To prompt BoardChanged with locked piece user data.
+    field <- gets _field
+    prompt $ PlayfieldChanged field
     tryClearRows
     nextPiece
 
@@ -323,9 +324,11 @@ getGhost f = branch id $ do
     modify $ \st -> let
         config = _config st
         config' = config { _ghostify = Nothing }
+        piece = _piece st
+        ghost = fmap f piece
         in st {
             _config = config',
-            _piece = fmap f $ _piece st }
+            _piece = ghost }
     ghostIdx <- gets _ghostPieceIndex >>= \case
         Just i -> return i
         Nothing -> do
