@@ -238,7 +238,9 @@ performAction :: (GameContext p u m) => Action -> GameEngine p u m ()
 performAction = \case
     DoNothing -> return ()
     QuitGame -> quitGame
-    Rotate rotateDir -> tryRotate rotateDir
+    Rotate rotateDir -> do
+        _ <- tryRotate rotateDir
+        return ()
     Move rhythm moveDir -> do
         _ <- tryMove rhythm moveDir
         return ()
@@ -289,6 +291,14 @@ initLockDelay = gets _framesTillLock >>= \case
         modify $ \st -> st { _framesTillLock = Just frames }
 
 
+resetLockDelay :: (GameContext p u m) => GameEngine p u m ()
+resetLockDelay = gets _framesTillLock >>= \case
+    Nothing -> return ()
+    Just _ -> do
+        modify $ \st -> st { _framesTillLock = Nothing }
+        initLockDelay
+
+
 lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
     f <- gets $ _lockAction . _config
@@ -301,19 +311,23 @@ lockPiece = do
     nextPiece
 
 
-tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m ()
+tryRotate :: (GameContext p u m) => RotateDir -> GameEngine p u m Bool
 tryRotate dir = do
     removeGhostPiece
     p <- gets _piece
     let p' = Piece.rotate dir p
     idx <- gets _pieceIndex
     field <- gets $ Field.removePiece idx p . _field
-    case Field.addPiece idx p' field of
-        Nothing -> return ()
-        Just field' -> modify $ \st -> st {
-            _piece = p',
-            _field = field' }
+    rotated <- case Field.addPiece idx p' field of
+        Nothing -> return False
+        Just field' -> do
+            modify $ \st -> st {
+                _piece = p',
+                _field = field' }
+            resetLockDelay
+            return True
     addGhostPiece
+    return rotated
 
 
 moveIndex :: MoveDir -> Index -> Index
@@ -332,7 +346,7 @@ tryMove _ dir = do
             Down -> when (not moved) $ do
                 -- TODO: A simple lockPiece call should suffice, but it doesn't work properly
                 modify $ \st -> st { _framesTillLock = Just 0 }
-            _ -> return ()
+            _ -> when moved resetLockDelay
     return moved
 
 
