@@ -32,6 +32,7 @@ import Data.Ratio
 import Data.Rotate (RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
+import Game.Frame
 import Game.Gravity
 import Game.Level
 import Game.Piece (Piece)
@@ -95,7 +96,8 @@ defaultPrompt = \case
 
 data GameConfig u = GameConfig {
     _ghostify :: Maybe (u -> u),
-    _lockAction :: u -> u,
+    _lockAction :: LockAction u,
+    _lockDelay :: Level -> Frame,
     _gravityRate :: Level -> Gravity,
     _playfieldDim :: Dimensions
 }
@@ -105,6 +107,7 @@ defaultGameConfig :: GameConfig u
 defaultGameConfig = GameConfig {
     _ghostify = Nothing,
     _lockAction = id,
+    _lockDelay = const 5,
     _gravityRate = const $ 1 / 60,
     _playfieldDim = (10, 22)
 }
@@ -122,6 +125,7 @@ data GameState p u = GameState {
     _level :: Level,
     _score :: Score,
     _gravityProgress :: Gravity,
+    _framesTillLock :: Maybe Frame,
     _gameOver :: Bool
 }
 
@@ -139,6 +143,7 @@ mkGameState config pieces = GameState {
     _rowsCleared = 0,
     _score = 0,
     _gravityProgress = 0,
+    _framesTillLock = Nothing,
     _gameOver = False }
     where
         level = 1
@@ -190,6 +195,11 @@ tickGame = tickFrame
 
 tickFrame :: (GameContext p u m) => GameEngine p u m ()
 tickFrame = do
+    gets _framesTillLock >>= \case
+        Nothing -> return ()
+        Just frames -> case frames of
+            0 -> lockPiece
+            _ -> modify $ \st -> st { _framesTillLock = Just $ frames - 1 }
     action <- prompt GetAction
     performAction action
     tickGravity
@@ -270,14 +280,21 @@ dropPiece = tryMove Init Down
 
 
 initLockDelay :: (GameContext p u m) => GameEngine p u m ()
-initLockDelay = do
-    lockPiece -- TODO: Do this properly
+initLockDelay = gets _framesTillLock >>= \case
+    Just _ -> return ()
+    Nothing -> do
+        level <- gets _level
+        f <- gets $ _lockDelay . _config
+        let frames = f level
+        modify $ \st -> st { _framesTillLock = Just frames }
 
 
 lockPiece :: (GameContext p u m) => GameEngine p u m ()
 lockPiece = do
     f <- gets $ _lockAction . _config
-    modify $ \st -> st { _piece = fmap f $ _piece st }
+    modify $ \st -> st {
+        _framesTillLock = Nothing,
+        _piece = fmap f $ _piece st }
     field <- gets _field
     prompt $ PlayfieldChanged field
     tryClearRows

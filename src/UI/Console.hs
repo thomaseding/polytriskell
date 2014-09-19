@@ -99,6 +99,7 @@ ghostify block = block { _char = chr 9617 }
 gameConfig :: GameConfig U
 gameConfig = defaultGameConfig {
     _lockAction = lockAction,
+    _lockDelay = const 5,
     _ghostify = Just ghostify,
     _gravityRate = const $ Gravity $ 1 % frameRate
 }
