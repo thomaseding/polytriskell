@@ -15,9 +15,11 @@ import Control.Monad.Trans
 import Data.Cell
 import Data.Char
 import Data.List.NonEmpty (NonEmpty)
+import Data.Ratio
 import Data.Rotate
 import qualified Data.Stream as Stream
 import Game.Engine
+import Game.Gravity
 import Game.Level
 import Game.Playfield
 import Game.Tetromino
@@ -96,7 +98,8 @@ ghostify block = block { _char = chr 9617 }
 gameConfig :: GameConfig U
 gameConfig = defaultGameConfig {
     _lockAction = lockAction,
-    _ghostify = Just ghostify
+    _ghostify = Just ghostify,
+    _gravityRate = const $ Gravity $ 1 % frameRate
 }
 
 
@@ -196,9 +199,17 @@ getKey = getChar >>= \case
             Just key -> key
 
 
+frameRate :: Int
+frameRate = 10
+
+
+microsecondsPerFrame :: Int
+microsecondsPerFrame = 1000000 `div` frameRate
+
+
 getAction :: Console Action
 getAction = liftIO $ do
-    timeout 1000000 getKey >>= return . \case
+    timeout microsecondsPerFrame getKey >>= return . \case
         Nothing -> DoNothing
         Just key -> case key of
             RightKey -> Move Init Right

@@ -29,9 +29,11 @@ import qualified Data.Grid as Grid
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (mapMaybe)
+import Data.Ratio
 import Data.Rotate (RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
+import Game.Gravity
 import Game.Level
 import Game.Piece (Piece)
 import qualified Game.Piece as Piece
@@ -102,6 +104,7 @@ defaultPrompt = \case
 data GameConfig u = GameConfig {
     _ghostify :: Maybe (u -> u),
     _lockAction :: u -> u,
+    _gravityRate :: Level -> Gravity,
     _playfieldDim :: Dimensions
 }
 
@@ -110,6 +113,7 @@ defaultGameConfig :: GameConfig u
 defaultGameConfig = GameConfig {
     _ghostify = Nothing,
     _lockAction = id,
+    _gravityRate = const $ 1 / 60,
     _playfieldDim = (10, 22)
 }
 
@@ -125,6 +129,7 @@ data GameState p u = GameState {
     _rowsCleared :: TotalRowCount,
     _level :: Level,
     _score :: Score,
+    _gravityProgress :: Gravity,
     _gameOver :: Bool
 }
 
@@ -138,10 +143,13 @@ mkGameState config pieces = GameState {
     _pieceIndex = (0, 0),
     _ghostPieceIndex = Nothing,
     _futurePieces = pieces,
-    _level = 1,
+    _level = level,
     _rowsCleared = 0,
     _score = 0,
+    _gravityProgress = 0,
     _gameOver = False }
+    where
+        level = 1
 
 
 newtype GameEngine p u m a = GameEngine {
@@ -242,10 +250,36 @@ gameOver :: (GameContext p u m) => GameEngine p u m ()
 gameOver = modify $ \st -> st { _gameOver = True }
 
 
+bringUnder1 :: Gravity -> (Gravity, Int)
+bringUnder1 g = (g', n)
+    where
+        r = unGravity g
+        numer = numerator r
+        denom = denominator r
+        (n, numer') = numer `divMod` denom
+        g' = Gravity $ (numer' % denom)
+
+
 tickGravity :: (GameContext p u m) => GameEngine p u m ()
-tickGravity = tryMove Init Down >>= \case
-    True -> return ()
-    False -> lockPiece
+tickGravity = do
+    level <- gets _level
+    rate <- gets $ _gravityRate . _config
+    progress <- gets $ (rate level +) . _gravityProgress
+    let (progress', cellsToDrop) = bringUnder1 progress
+    modify $ \st -> st { _gravityProgress = progress' }
+    dropResults <- replicateM cellsToDrop dropPiece
+    case and dropResults of
+        True -> return ()
+        False -> initLockDelay
+
+
+dropPiece :: (GameContext p u m) => GameEngine p u m Bool
+dropPiece = tryMove Init Down
+
+
+initLockDelay :: (GameContext p u m) => GameEngine p u m ()
+initLockDelay = do
+    lockPiece -- TODO: Do this properly
 
 
 lockPiece :: (GameContext p u m) => GameEngine p u m ()
