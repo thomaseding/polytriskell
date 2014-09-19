@@ -22,6 +22,7 @@ import Game.Engine
 import Game.Gravity
 import Game.Level
 import Game.Playfield
+import Game.Score
 import Game.Tetromino
 import Prelude hiding (Left, Right)
 import System.Console.ANSI

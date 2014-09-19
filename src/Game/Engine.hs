@@ -15,7 +15,6 @@ module Game.Engine (
     Rhythm(..),
     Action(..),
     GameMonad,
-    Score,
     playGame,
 ) where
 
@@ -39,6 +38,7 @@ import Game.Piece (Piece)
 import qualified Game.Piece as Piece
 import Game.Playfield (Playfield)
 import qualified Game.Playfield as Field
+import Game.Score
 import Prelude hiding (Left, Right, foldr)
 
 
@@ -74,14 +74,6 @@ data Action
     | Rotate RotateDir
     | Move Rhythm MoveDir
     deriving (Show, Eq, Ord)
-
-
-newtype Score = Score { unScore :: Int }
-    deriving (Eq, Ord, Num)
-
-
-instance Show Score where
-    show = show . unScore
 
 
 data GamePrompt u :: * -> * where
