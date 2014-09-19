@@ -101,7 +101,7 @@ defaultPrompt = \case
 
 data GameConfig u = GameConfig {
     _ghostify :: Maybe (u -> u),
-    _lockAction :: (u -> u),
+    _lockAction :: u -> u,
     _playfieldDim :: Dimensions
 }
 
@@ -185,7 +185,11 @@ gameLoop = isGameOver >>= \case
 
 
 tickGame :: (GameContext p u m) => GameEngine p u m ()
-tickGame = do
+tickGame = tickFrame
+
+
+tickFrame :: (GameContext p u m) => GameEngine p u m ()
+tickFrame = do
     action <- prompt GetAction
     performAction action
     tickGravity
