@@ -17,6 +17,7 @@ import Data.Char
 import Data.List.NonEmpty (NonEmpty)
 import Data.Ratio
 import Data.Rotate
+import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import Game.Engine
 import Game.Gravity
@@ -88,8 +89,12 @@ rowsClearedRow :: Int
 rowsClearedRow = 3
 
 
+piecePreviewRow :: Int
+piecePreviewRow = 4
+
+
 boardRow :: Int
-boardRow = 4
+boardRow = 5
 
 
 ghostify :: U -> U
@@ -154,17 +159,27 @@ drawRowsCleared n = liftIO $ do
     putStrLn $ "Rows Cleared " ++ show n
 
 
+piecePreview :: Stream (Tetromino U) -> Console ()
+piecePreview ps = liftIO $ do
+    setCursorPosition piecePreviewRow 0
+    clearLine
+    putStrLn $ "Next Pieces: " ++ show (map getKind ps')
+    where
+        ps' = take 3 $ Stream.toList ps
+
+
 newtype Console a = Console { runConsole :: IO a }
     deriving (Functor, Monad, MonadIO)
 
 
-instance MonadPrompt (GamePrompt U) Console where
+instance MonadPrompt (GamePrompt Tetromino U) Console where
     prompt = \case
         PlayfieldChanged field -> drawBoard field
         RowsCleared rows totalCleared -> rowsCleared rows totalCleared
         GetAction -> getAction
         ScoreChanged s -> drawScore s
         LevelChanged l -> drawLevel l
+        PiecePreview ps -> piecePreview ps
 
 
 rowsCleared :: NonEmpty Int -> Int -> Console ()

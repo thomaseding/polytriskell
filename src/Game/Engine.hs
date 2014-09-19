@@ -77,15 +77,16 @@ data Action
     deriving (Show, Eq, Ord)
 
 
-data GamePrompt u :: * -> * where
-    GetAction :: GamePrompt u Action
-    ScoreChanged :: Score -> GamePrompt u ()
-    LevelChanged :: Level -> GamePrompt u ()
-    PlayfieldChanged :: Playfield u -> GamePrompt u ()
-    RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt u ()
+data GamePrompt :: (* -> *) -> * -> * -> * where
+    GetAction :: GamePrompt p u Action
+    ScoreChanged :: Score -> GamePrompt p u ()
+    LevelChanged :: Level -> GamePrompt p u ()
+    PlayfieldChanged :: Playfield u -> GamePrompt p u ()
+    RowsCleared :: NonEmpty Int -> TotalRowCount -> GamePrompt p u ()
+    PiecePreview :: Stream (p u) -> GamePrompt p u ()
 
 
-defaultPrompt :: (Monad m) => GamePrompt u a -> GameEngine p u m a
+defaultPrompt :: (Monad m) => GamePrompt p u a -> GameEngine p u m a
 defaultPrompt = \case
     GetAction {} -> return DoNothing
     ScoreChanged {} -> return ()
@@ -154,11 +155,11 @@ newtype GameEngine p u m a = GameEngine {
 } deriving (Monad, MonadState (GameState p u), MonadTrans, MonadIO)
 
 
-type GameMonad u m = (MonadPrompt (GamePrompt u) m)
-type GameContext p u m = (GameMonad u m, Piece p, Functor p)
+type GameMonad p u m = (MonadPrompt (GamePrompt p u) m)
+type GameContext p u m = (GameMonad p u m, Piece p, Functor p)
 
 
-instance (GameMonad u m) => MonadPrompt (GamePrompt u) (GameEngine p u m) where
+instance (GameMonad p u m) => MonadPrompt (GamePrompt p u) (GameEngine p u m) where
     prompt p = gets _promptEnabled >>= \case
         False -> defaultPrompt p
         True -> lift $ prompt p
@@ -232,6 +233,7 @@ nextPiece = do
                 _pieceIndex = startIdx,
                 _field = field' }
             addGhostPiece
+            prompt $ PiecePreview $ Stream.tail pieces
 
 
 performAction :: (GameContext p u m) => Action -> GameEngine p u m ()
