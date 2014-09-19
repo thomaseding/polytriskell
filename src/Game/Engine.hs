@@ -324,7 +324,16 @@ moveIndex dir (x, y) = case dir of
 
 
 tryMove :: (GameContext p u m) => Rhythm -> MoveDir -> GameEngine p u m Bool
-tryMove _ = tryMoveBy . moveIndex
+tryMove _ dir = do
+    moved <- tryMoveBy $ moveIndex dir
+    gets _framesTillLock >>= \case
+        Nothing -> return ()
+        Just _ -> case dir of
+            Down -> when (not moved) $ do
+                -- TODO: A simple lockPiece call should suffice, but it doesn't work properly
+                modify $ \st -> st { _framesTillLock = Just 0 }
+            _ -> return ()
+    return moved
 
 
 tryMoveBy :: (GameContext p u m) => (Index -> Index) -> GameEngine p u m Bool
