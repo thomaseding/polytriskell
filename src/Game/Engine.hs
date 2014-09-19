@@ -16,7 +16,6 @@ module Game.Engine (
     Action(..),
     GameMonad,
     Score,
-    Level,
     playGame,
 ) where
 
@@ -33,6 +32,7 @@ import Data.Maybe (mapMaybe)
 import Data.Rotate (RotateDir(..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
+import Game.Level
 import Game.Piece (Piece)
 import qualified Game.Piece as Piece
 import Game.Playfield (Playfield)
@@ -72,14 +72,6 @@ data Action
     | Rotate RotateDir
     | Move Rhythm MoveDir
     deriving (Show, Eq, Ord)
-
-
-newtype Level = Level { unLevel :: Int }
-    deriving (Eq, Ord, Num)
-
-
-instance Show Level where
-    show = show . unLevel
 
 
 newtype Score = Score { unScore :: Int }

@@ -18,6 +18,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Rotate
 import qualified Data.Stream as Stream
 import Game.Engine
+import Game.Level
 import Game.Playfield
 import Game.Tetromino
 import Prelude hiding (Left, Right)
