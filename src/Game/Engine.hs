@@ -146,7 +146,7 @@ mkGameState config pieces = GameState {
 
 newtype GameEngine p u m a = GameEngine {
     unGameEngine :: StateT (GameState p u) m a
-} deriving (Monad, MonadState (GameState p u), MonadTrans)
+} deriving (Monad, MonadState (GameState p u), MonadTrans, MonadIO)
 
 
 type GameMonad u m = (MonadPrompt (GamePrompt u) m)
