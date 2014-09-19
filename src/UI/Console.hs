@@ -216,11 +216,11 @@ getAction = liftIO $ do
         Just key -> case key of
             RightKey -> Move Init Right
             LeftKey -> Move Init Left
+            DownKey -> Move Init Down
             UpKey -> Rotate Clockwise
             CharKey c -> case c of
                 '\ESC' -> QuitGame
                 _ -> DoNothing
-            _ -> DoNothing
 
 
 type ColoredChar = (Char, Color, ColorIntensity)
