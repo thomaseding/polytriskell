@@ -16,6 +16,7 @@ import Control.Monad.Prompt
 import Control.Monad.Trans
 import Data.Cell
 import Data.Char
+import Data.IORef
 import Data.List.NonEmpty (NonEmpty)
 import Data.Ratio
 import Data.Rotate
@@ -30,14 +31,20 @@ import Game.Score
 import Game.Tetromino
 import Graphics.UI.Gtk (AttrOp((:=)))
 import qualified Graphics.UI.Gtk as Gtk
+import qualified Graphics.UI.Gtk.Gdk.Events as Gdk
 import Prelude hiding (Left, Right)
 import System.Random
 import System.Random.Shuffle
 import System.Timeout
 
 
+nullKey :: Gtk.KeyVal
+nullKey = 0
+
+
 main :: IO ()
 main = do
+    keyRef <- newIORef nullKey
     Gtk.initGUI
     window <- Gtk.windowNew
     image <- Gtk.imageNewFromFile "/home/thomas/Downloads/pwg-sample-11_photo.jpg"
@@ -47,13 +54,17 @@ main = do
     Gtk.onDestroy window Gtk.mainQuit
     Gtk.widgetShowAll window
     Gtk.windowFullscreen window
+    Gtk.onKeyPress window $ handleKeyPress keyRef
+    Gtk.onKeyRelease window $ handleKeyRelease keyRef
     --
     when True $ do
         forkIO $ do
             threadDelay 1000000 -- TODO: See if this is needed
             gen <- getStdGen
             let ps = Stream.fromList $ concat $ shuffleAll basicBags gen
-                env = Env { _image = image }
+                env = Env {
+                    _image = image,
+                    _keyRef = keyRef }
             score <- runGUI env $ playGame gameConfig ps
             Gtk.widgetDestroy window
         return ()
@@ -64,8 +75,21 @@ main = do
 
 
 data Env = Env {
-    _image :: Gtk.Image
+    _image :: Gtk.Image,
+    _keyRef :: IORef Gtk.KeyVal
 }
+
+
+handleKeyPress :: IORef Gtk.KeyVal -> Gdk.Event -> IO Bool
+handleKeyPress keyRef keyEvent = do
+    atomicModifyIORef' keyRef $ const (Gdk.eventKeyVal keyEvent, ())
+    return True
+
+
+handleKeyRelease :: IORef Gtk.KeyVal -> Gdk.Event -> IO Bool
+handleKeyRelease keyRef _ = do
+    atomicModifyIORef' keyRef $ const (nullKey, ())
+    return True
 
 
 splits :: RandomGen g => g -> [g]
@@ -196,7 +220,14 @@ microsecondsPerFrame = 1000000 `div` frameRate
 
 getAction :: GUI Action
 getAction = do
-    return $ Move Init Down
+    keyRef <- asks _keyRef
+    key <- liftIO $ readIORef keyRef
+    return $ case key of
+        65361 -> Move Init Left     -- left key
+        65362 -> Rotate Clockwise   -- up key
+        65363 -> Move Init Right    -- right key
+        65364 -> Move Init Down     -- down key
+        _ -> DoNothing
 
 
 
